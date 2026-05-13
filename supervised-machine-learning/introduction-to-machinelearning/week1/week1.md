@@ -285,3 +285,96 @@ $$
 > Implementation lives in [univariate-lr-implementation.py](univariate-lr-implementation.py).
 
 ---
+
+## Cost Function
+
+To implement linear regression, the first key step is to define a **cost function** — a way to measure **how well the model is doing** so we can adjust it to do better.
+
+### Recap — Model and Parameters
+
+We have a training set of input features `x` and output targets `y`, and we fit a linear function:
+
+$$
+f_{w,b}(x) = wx + b
+$$
+
+- `w` and `b` are the **parameters** of the model.
+- **Parameters** = variables you can adjust during training to improve the model.
+- Also called **coefficients** or **weights**.
+
+### What `w` and `b` Do
+
+Different values of `w` and `b` produce different functions `f(x)` — different lines on the graph.
+
+| `w` | `b` | `f(x)` | Behavior |
+|---|---|---|---|
+| 0 | 1.5 | `f(x) = 1.5` | Horizontal line — always predicts 1.5. `b` is the **y-intercept** (where the line crosses the y-axis). |
+| 0.5 | 0 | `f(x) = 0.5x` | Passes through origin. `w` is the **slope** (rise/run = 0.5). |
+| 0.5 | 1 | `f(x) = 0.5x + 1` | Crosses y-axis at `b = 1`. Slope is still `w = 0.5`. |
+
+> `w` controls the **slope**; `b` controls the **y-intercept**.
+
+### Goal of Linear Regression
+
+Choose values of `w` and `b` so that the line `f(x) = wx + b` **fits the training data well** — i.e. passes through or close to the training examples.
+
+### Predictions vs. Targets
+
+| Symbol | Meaning |
+|---|---|
+| `(x⁽ⁱ⁾, y⁽ⁱ⁾)` | The **i-th training example** — `y⁽ⁱ⁾` is the true target |
+| `ŷ⁽ⁱ⁾` | The model's **prediction** for `x⁽ⁱ⁾`: `ŷ⁽ⁱ⁾ = f_{w,b}(x⁽ⁱ⁾) = wx⁽ⁱ⁾ + b` |
+
+**Question:** how do we find `w` and `b` so that `ŷ⁽ⁱ⁾` is close to `y⁽ⁱ⁾` for many (ideally all) training examples?
+
+### Building the Cost Function — Step by Step
+
+1. **Error for one example** — how far off the prediction is from the target:
+
+   $$
+   \text{error}^{(i)} = \hat{y}^{(i)} - y^{(i)}
+   $$
+
+2. **Squared error** — square it so positive and negative errors don't cancel out, and large errors are penalized more:
+
+   $$
+   (\hat{y}^{(i)} - y^{(i)})^2
+   $$
+
+3. **Sum across all training examples** (`i = 1` to `m`):
+
+   $$
+   \sum_{i=1}^{m} (\hat{y}^{(i)} - y^{(i)})^2
+   $$
+
+   ⚠️ Problem: more training examples → bigger sum, even if the model is equally good. We don't want the cost to grow with dataset size.
+
+4. **Average squared error** — divide by `m`:
+
+   $$
+   \frac{1}{m} \sum_{i=1}^{m} (\hat{y}^{(i)} - y^{(i)})^2
+   $$
+
+5. **By convention, divide by `2m`** — the extra factor of 2 makes later derivative calculations cleaner. The cost function works either way.
+
+### The Squared Error Cost Function
+
+$$
+J(w, b) = \frac{1}{2m} \sum_{i=1}^{m} \left( \hat{y}^{(i)} - y^{(i)} \right)^2
+        = \frac{1}{2m} \sum_{i=1}^{m} \left( f_{w,b}(x^{(i)}) - y^{(i)} \right)^2
+$$
+
+- `J(w, b)` is the **cost function**.
+- Called the **squared error cost function** because we square the error terms.
+- **By far the most common** cost function for linear regression and regression problems in general.
+
+### Intuition
+
+| `J(w, b)` value | Meaning |
+|---|---|
+| Small | Predictions are close to targets — model fits the data well |
+| Large | Predictions are far from targets — model fits the data poorly |
+
+> Our goal: find values of `w` and `b` that **minimize** `J(w, b)`.
+
+---
