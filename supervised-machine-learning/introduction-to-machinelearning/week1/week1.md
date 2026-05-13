@@ -331,29 +331,29 @@ Choose values of `w` and `b` so that the line `f(x) = wx + b` **fits the trainin
 
 1. **Error for one example** — how far off the prediction is from the target:
 
-   $$
+   ```math
    \text{error}^{(i)} = \hat{y}^{(i)} - y^{(i)}
-   $$
+   ```
 
 2. **Squared error** — square it so positive and negative errors don't cancel out, and large errors are penalized more:
 
-   $$
+   ```math
    (\hat{y}^{(i)} - y^{(i)})^2
-   $$
+   ```
 
 3. **Sum across all training examples** (`i = 1` to `m`):
 
-   $$
+   ```math
    \sum_{i=1}^{m} (\hat{y}^{(i)} - y^{(i)})^2
-   $$
+   ```
 
    ⚠️ Problem: more training examples → bigger sum, even if the model is equally good. We don't want the cost to grow with dataset size.
 
 4. **Average squared error** — divide by `m`:
 
-   $$
+   ```math
    \frac{1}{m} \sum_{i=1}^{m} (\hat{y}^{(i)} - y^{(i)})^2
-   $$
+   ```
 
 5. **By convention, divide by `2m`** — the extra factor of 2 makes later derivative calculations cleaner. The cost function works either way.
 
