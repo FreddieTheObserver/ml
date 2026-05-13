@@ -378,3 +378,127 @@ $$
 > Our goal: find values of `w` and `b` that **minimize** `J(w, b)`.
 
 ---
+
+## Cost Function — Intuition
+
+The cost function `J` measures the gap between the model's predictions and the actual targets. Linear regression's job is to find `w` and `b` that make `J` as small as possible:
+
+$$
+\underset{w,b}{\text{minimize}} \; J(w, b)
+$$
+
+### Simplified Model — Set `b = 0`
+
+To build intuition visually, drop the `b` parameter (set `b = 0`). The model becomes:
+
+$$
+f_w(x) = wx
+$$
+
+- Only **one** parameter to tune: `w`.
+- The line is forced to pass through the **origin** (when `x = 0`, `f(x) = 0`).
+- Cost function simplifies to a function of `w` alone:
+
+$$
+J(w) = \frac{1}{2m} \sum_{i=1}^{m} \left( w \cdot x^{(i)} - y^{(i)} \right)^2
+$$
+
+**Goal:** find the `w` that minimizes `J(w)`.
+
+### Two Graphs Side-by-Side
+
+There are **two different plots** to keep straight — they're related but show different things:
+
+| Plot | Horizontal axis | Vertical axis | What it shows |
+|---|---|---|---|
+| **Model** `f_w(x)` | `x` (input feature) | `y` (output) | A straight line for a **fixed** `w` |
+| **Cost** `J(w)` | `w` (parameter) | `J` (cost) | How cost varies as `w` changes |
+
+> For each value of `w`, you get **one line** on the left plot and **one point** on the right plot.
+
+### Worked Example — Training Set `(1,1), (2,2), (3,3)`
+
+Three points lying perfectly on the line `y = x`. Let's compute `J(w)` for several values of `w`.
+
+#### Case 1 — `w = 1`
+
+The line `f(x) = x` passes through all three points exactly.
+
+| i | x⁽ⁱ⁾ | y⁽ⁱ⁾ | f(x⁽ⁱ⁾) = 1·x⁽ⁱ⁾ | error² |
+|---|---|---|---|---|
+| 1 | 1 | 1 | 1 | 0² |
+| 2 | 2 | 2 | 2 | 0² |
+| 3 | 3 | 3 | 3 | 0² |
+
+$$
+J(1) = \frac{1}{2 \cdot 3} (0 + 0 + 0) = 0
+$$
+
+> Perfect fit → cost is zero.
+
+#### Case 2 — `w = 0.5`
+
+The line `f(x) = 0.5x` has a shallower slope. Each prediction undershoots the target.
+
+| i | x⁽ⁱ⁾ | y⁽ⁱ⁾ | f(x⁽ⁱ⁾) = 0.5·x⁽ⁱ⁾ | error² |
+|---|---|---|---|---|
+| 1 | 1 | 1 | 0.5 | (0.5 − 1)² = 0.25 |
+| 2 | 2 | 2 | 1.0 | (1 − 2)² = 1 |
+| 3 | 3 | 3 | 1.5 | (1.5 − 3)² = 2.25 |
+
+$$
+J(0.5) = \frac{1}{2 \cdot 3} (0.25 + 1 + 2.25) = \frac{3.5}{6} \approx 0.58
+$$
+
+#### Case 3 — `w = 0`
+
+The line `f(x) = 0` is horizontal, sitting on the x-axis.
+
+$$
+J(0) = \frac{1}{2 \cdot 3} (1^2 + 2^2 + 3^2) = \frac{14}{6} \approx 2.33
+$$
+
+#### Case 4 — `w = −0.5`
+
+Downward-sloping line — predictions are way off.
+
+$$
+J(-0.5) \approx 5.25
+$$
+
+### Plotting `J(w)`
+
+Repeating this calculation across a range of `w` values traces out the shape of `J(w)`:
+
+| `w` | `J(w)` |
+|---|---|
+| −0.5 | ~5.25 |
+| 0 | ~2.33 |
+| 0.5 | ~0.58 |
+| 1 | 0 |
+| 1.5 | ~0.58 |
+| 2 | ~2.33 |
+
+![Side-by-side plot of f_w(x) lines and the resulting J(w) parabola](/supervised-machine-learning/introduction-to-machinelearning/week1/images/cost_function.png)
+
+The plot is a **U-shaped (parabolic) curve** with its minimum at `w = 1`.
+
+### Key Insight
+
+> Each value of `w` corresponds to:
+> - a different **line** on the model plot, **and**
+> - a single **point** on the cost plot.
+>
+> The `w` that minimizes `J(w)` produces the line that best fits the training data.
+
+For this training set, `w = 1` minimizes `J` and gives the best-fitting line — exactly what we'd expect.
+
+### Generalizing Back to Two Parameters
+
+In the full linear regression problem with **both** `w` and `b`:
+
+- Goal: find `w` and `b` that minimize `J(w, b)`.
+- Same idea — the cost surface is now 3D (a function of two parameters) instead of a 2D curve.
+- Visualized as a **3D bowl-shaped surface** or as **contour plots**.
+
+---
