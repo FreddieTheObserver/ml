@@ -210,3 +210,78 @@ Here `m = 47`, and for the first training example `x⁽¹⁾ = 2104`, `y⁽¹⁾
 > ⚠️ **The superscript `(i)` is NOT exponentiation.** `x⁽²⁾` means "the second training example" — not `x²` (x squared). It's just an **index** into the training set.
 
 ---
+
+## How Supervised Learning Works
+
+### The Workflow
+
+```
+Training set  ──►  Learning algorithm  ──►  Function  f  (the model)
+(features x +
+ targets y)
+
+New input  x  ──►  f  ──►  ŷ  (prediction / estimate of y)
+```
+
+- Feed the **training set** (input features `x` + output targets `y`) into the **learning algorithm**.
+- The algorithm produces a **function `f`** — this is the **model**.
+- Historically `f` was called a *hypothesis*; in this course we just call it the **function f**.
+- Given a new input `x`, the model outputs `ŷ` (read as **"y-hat"**) — the prediction.
+
+### `y` vs. `ŷ` — Target vs. Prediction
+
+| Symbol | Meaning |
+|---|---|
+| `y` | The **actual true value** (target) — from the training set |
+| `ŷ` | The model's **estimate / prediction** for `y` — may or may not equal the true value |
+
+> When helping a client sell a house, the **true price** is unknown until it sells. The model's `ŷ` is the **estimated price** given the house's features.
+
+### How Do We Represent `f`?
+
+A key design question: **what math formula computes `f`?**
+
+For now, we stick with `f` as a **straight line**:
+
+$$
+f_{w,b}(x) = wx + b
+$$
+
+- `w` and `b` are **numbers** (parameters); their values determine the prediction `ŷ`.
+- Shorthand: write `f(x)` instead of `f_{w,b}(x)` — same meaning.
+- Plot: `x` on horizontal axis, `y` on vertical axis. The algorithm finds the **best-fit straight line** through the training points.
+
+### Why a Linear Function?
+
+- A line is **simple and easy to work with**.
+- It serves as a **foundation** for more complex non-linear models (curves, parabolas, etc.) introduced later.
+
+### Naming the Model
+
+| Name | Meaning |
+|---|---|
+| **Linear regression** | The model `f(x) = wx + b` |
+| **Linear regression with one variable** | A single input feature `x` (e.g. just house size) |
+| **Univariate linear regression** | Same thing — *uni* = one (Latin), *variate* = variable |
+
+> Later: **multivariate** linear regression — predicting from multiple features (size, # bedrooms, etc.).
+
+---
+
+## Optional Lab — Notation Cheat Sheet
+
+| Math | Description | Python |
+|---|---|---|
+| `a` (non-bold) | scalar | `a` |
+| **a** (bold) | vector | `a` (numpy array) |
+| `x` | training feature values (size in 1000 sqft) | `x_train` |
+| `y` | training targets (price in $1000s) | `y_train` |
+| `x⁽ⁱ⁾`, `y⁽ⁱ⁾` | i-th training example | `x_i`, `y_i` |
+| `m` | number of training examples | `m` |
+| `w` | parameter — **weight** | `w` |
+| `b` | parameter — **bias** | `b` |
+| `f_{w,b}(x⁽ⁱ⁾)` | model output at `x⁽ⁱ⁾` | `f_wb` |
+
+> Implementation lives in [univariate-lr-implementation.py](univariate-lr-implementation.py).
+
+---
