@@ -502,3 +502,101 @@ In the full linear regression problem with **both** `w` and `b`:
 - Visualized as a **3D bowl-shaped surface** or as **contour plots**.
 
 ---
+
+## Cost Function Visualization With `w` and `b`
+
+Previously, we simplified the visualization by setting `b = 0`, so the cost function depended only on `w`:
+
+$$
+J(w)
+$$
+
+Now return to the full linear regression model:
+
+$$
+f_{w,b}(x) = wx + b
+$$
+
+The cost function depends on both parameters:
+
+$$
+J(w, b)
+$$
+
+![Cost function visualizations as a 2D curve, 3D surface, and contour plot](/supervised-machine-learning/introduction-to-machinelearning/week1/images/cost-function-vis-examples.png)
+
+### Example Model Choice
+
+For the housing-price training set, suppose we choose:
+
+$$
+w = 0.06, \quad b = 50
+$$
+
+Then:
+
+$$
+f(x) = 0.06x + 50
+$$
+
+This line is a poor fit for the training data because it consistently underestimates house prices. That means this choice of `w` and `b` gives a relatively large value of `J(w, b)`.
+
+### From a U-Shaped Curve to a 3D Bowl
+
+When there was only one parameter, `w`, the cost function `J(w)` could be drawn as a 2D U-shaped curve.
+
+With two parameters, `w` and `b`, the cost function becomes a 3D surface:
+
+- The horizontal axes are `w` and `b`.
+- The vertical axis is the cost `J(w, b)`.
+- Each point on the surface represents one particular choice of `w` and `b`.
+- The height of the surface at that point is the cost for that choice.
+
+![3D bowl-shaped surface plot of the cost function J(w, b)](/supervised-machine-learning/introduction-to-machinelearning/week1/images/3d-cost-func.png)
+
+For example, if:
+
+$$
+w = -10, \quad b = -15
+$$
+
+then the surface height above that point is:
+
+$$
+J(-10, -15)
+$$
+
+The surface is shaped like a bowl, curved plate, or hammock. The lowest point of the bowl is the minimum cost.
+
+> Linear regression's goal is to find the values of `w` and `b` at the bottom of this bowl.
+
+### Contour Plots
+
+A 3D surface can be hard to read, so we can show the same cost function using a **contour plot**.
+
+A contour plot is like a topographic map:
+
+![Contour plot example showing curves of equal height](/supervised-machine-learning/introduction-to-machinelearning/week1/images/contour-plot-example.png)
+
+- Imagine slicing the 3D cost surface horizontally at different heights.
+- Each slice gives all points with the same cost value.
+- Viewed from above, these slices appear as ovals or ellipses.
+
+In the contour plot:
+
+| Axis | Meaning |
+|---|---|
+| Horizontal axis | `w` |
+| Vertical axis | `b` |
+| Each oval | All `(w, b)` pairs with the same `J(w, b)` |
+| Center of the ovals | Minimum of the cost function |
+
+So, different points on the same oval can have different values of `w` and `b`, and therefore different model lines `f(x)`, but they all have the same cost.
+
+### Key Insight
+
+> A contour plot is a 2D, top-down view of the same 3D cost surface.
+
+The smallest oval is closest to the bottom of the bowl. Its center marks the parameter values that minimize `J(w, b)` and give the best-fitting line for the training data.
+
+---
