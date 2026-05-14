@@ -479,7 +479,7 @@ Repeating this calculation across a range of `w` values traces out the shape of 
 | 1.5 | ~0.58 |
 | 2 | ~2.33 |
 
-![Side-by-side plot of f_w(x) lines and the resulting J(w) parabola](/supervised-machine-learning/introduction-to-machinelearning/week1/images/cost_function.png)
+![Side-by-side plot of f_w(x) lines and the resulting J(w) parabola](images/cost_function.png)
 
 The plot is a **U-shaped (parabolic) curve** with its minimum at `w = 1`.
 
@@ -523,7 +523,7 @@ $$
 J(w, b)
 $$
 
-![Cost function visualizations as a 2D curve, 3D surface, and contour plot](/supervised-machine-learning/introduction-to-machinelearning/week1/images/cost-function-vis-examples.png)
+![Cost function visualizations as a 2D curve, 3D surface, and contour plot](images/cost-function-vis-examples.png)
 
 ### Example Model Choice
 
@@ -552,7 +552,7 @@ With two parameters, `w` and `b`, the cost function becomes a 3D surface:
 - Each point on the surface represents one particular choice of `w` and `b`.
 - The height of the surface at that point is the cost for that choice.
 
-![3D bowl-shaped surface plot of the cost function J(w, b)](/supervised-machine-learning/introduction-to-machinelearning/week1/images/3d-cost-func.png)
+![3D bowl-shaped surface plot of the cost function J(w, b)](images/3d-cost-func.png)
 
 For example, if:
 
@@ -576,7 +576,7 @@ A 3D surface can be hard to read, so we can show the same cost function using a 
 
 A contour plot is like a topographic map:
 
-![Contour plot example showing curves of equal height](/supervised-machine-learning/introduction-to-machinelearning/week1/images/contour-plot-example.png)
+![Contour plot example showing curves of equal height](images/contour-plot-example.png)
 
 - Imagine slicing the 3D cost surface horizontally at different heights.
 - Each slice gives all points with the same cost value.
