@@ -600,3 +600,72 @@ So, different points on the same oval can have different values of `w` and `b`, 
 The smallest oval is closest to the bottom of the bowl. Its center marks the parameter values that minimize `J(w, b)` and give the best-fitting line for the training data.
 
 ---
+
+## Gradient Descent
+
+So far we've **described** cost — but how do we **systematically find** the `w` and `b` that minimize `J(w, b)`? The answer is **gradient descent**, one of the most important algorithms in all of machine learning.
+
+> Gradient descent is used everywhere — not just for linear regression, but for training advanced neural networks (deep learning) too.
+
+### What Gradient Descent Does
+
+Gradient descent is a general-purpose algorithm to **minimize any function**, not just the squared error cost.
+
+For a cost function with many parameters:
+
+$$
+J(w_1, w_2, \dots, w_n, b)
+$$
+
+the goal is to pick values of `w_1, ..., w_n, b` that give the smallest possible `J`.
+
+### The Algorithm at a High Level
+
+1. **Start with an initial guess** for `w` and `b`.
+   - For linear regression, the starting values don't matter much.
+   - Common choice: `w = 0`, `b = 0`.
+2. **Repeatedly tweak** `w` and `b` a little bit to reduce `J(w, b)`.
+3. **Stop** when `J` settles at or near a minimum.
+
+### The Hill-Descent Analogy
+
+Imagine the cost surface `J(w, b)` as a hilly outdoor landscape:
+
+- **Hills** = high cost (bad `w`, `b` choices).
+- **Valleys** = low cost (good `w`, `b` choices).
+- You're standing on the hill at your current `(w, b)`.
+- **Goal:** get to the bottom of a valley as efficiently as possible.
+
+![Gradient descent on a non-convex surface — stick figure walking downhill, paths leading to different local minima](images/gradient-descent-intuition.png)
+
+At each step, gradient descent does this:
+
+1. **Look around 360°** at your current spot.
+2. Find the **direction of steepest descent** — the direction in which a tiny step takes you downhill **fastest**.
+3. Take a small step in that direction.
+4. Repeat.
+
+Eventually you reach the bottom of a valley — a **local minimum**.
+
+### Local Minima
+
+Some cost surfaces (like the one shown above, which is **not** a squared error cost) have **multiple valleys**:
+
+| Concept | Meaning |
+|---|---|
+| **Local minimum** | The bottom of *a* valley — lowest point in its neighborhood, but not necessarily the lowest point overall |
+| **Global minimum** | The absolute lowest point on the entire surface |
+
+> ⚠️ **Where you start matters.** Starting at slightly different `(w, b)` can lead gradient descent to a **different local minimum**. Once you commit to walking down one valley, gradient descent won't climb back up to find another.
+
+### Squared Error Cost Is Special
+
+The image above is a **non-squared-error** cost — the kind you'd see when training a neural network. It has multiple local minima.
+
+For **linear regression with the squared error cost function**, the surface is always a single bowl/hammock shape — there is **only one minimum** (the global minimum). So gradient descent will always find the best `(w, b)` regardless of where you start.
+
+### Key Insight
+
+> Gradient descent = repeatedly take a small step in the direction of steepest descent until you reach a minimum. The math behind "direction of steepest descent" comes from calculus (partial derivatives) — covered in the next section.
+
+---
