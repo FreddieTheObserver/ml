@@ -669,3 +669,393 @@ For **linear regression with the squared error cost function**, the surface is a
 > Gradient descent = repeatedly take a small step in the direction of steepest descent until you reach a minimum. The math behind "direction of steepest descent" comes from calculus (partial derivatives) — covered in the next section.
 
 ---
+
+## Implementing Gradient Descent
+
+The gradient descent algorithm updates each parameter on every step:
+
+$$
+w := w - \alpha \, \frac{\partial}{\partial w} J(w, b)
+$$
+
+$$
+b := b - \alpha \, \frac{\partial}{\partial b} J(w, b)
+$$
+
+You repeat both updates until the algorithm **converges** — i.e. `w` and `b` stop changing much from one step to the next, meaning you've reached a local minimum.
+
+### `=` Means Assignment, Not Equality
+
+In this algorithm, `=` is the **assignment operator**, not a truth assertion.
+
+| Context | Meaning of `=` |
+|---|---|
+| Programming (`a = c`) | **Assign** the value of `c` into the variable `a` |
+| Programming (`a = a + 1`) | Increment `a` by 1 — perfectly valid |
+| Math (truth assertion) | Claim that two values **are** equal — `a = a + 1` would be nonsense |
+| Python equality test | Written `==` (e.g. `a == c`) |
+
+> In these notes the `=` sign in update rules always means **assignment** — the left side is being **set** to whatever the right side evaluates to.
+
+### The Learning Rate `α`
+
+`α` (Greek letter **alpha**) is the **learning rate** — a small positive number, typically between 0 and 1 (e.g. `0.01`).
+
+| `α` size | Effect |
+|---|---|
+| **Large** | Aggressive gradient descent — big steps downhill |
+| **Small** | Cautious gradient descent — tiny baby steps downhill |
+
+> Choosing a good learning rate matters a lot — covered in detail later.
+
+### The Derivative Term
+
+The term `∂J/∂w` (and `∂J/∂b`) is the **derivative** of the cost function with respect to that parameter.
+
+For now, treat the derivative as a black box that tells you:
+
+1. **Which direction** to step in (the direction of steepest descent).
+2. Combined with `α`, **how big** that step should be.
+
+> You don't need calculus to use gradient descent — the next section builds intuition for what the derivative is doing.
+
+### Simultaneous Update — The Correct Way
+
+For gradient descent to be implemented correctly, you must update `w` and `b` **simultaneously**. This means: compute the new values for **both** parameters using the **current** values, then assign them.
+
+#### Correct (simultaneous)
+
+```
+temp_w = w - α * ∂J(w, b)/∂w
+temp_b = b - α * ∂J(w, b)/∂b
+w = temp_w
+b = temp_b
+```
+
+Both derivative terms are evaluated using the **pre-update** `w` and `b`. The new values are stored in temp variables first, then applied together.
+
+#### Incorrect (non-simultaneous)
+
+```
+temp_w = w - α * ∂J(w, b)/∂w
+w = temp_w                       ← w is updated BEFORE computing temp_b
+temp_b = b - α * ∂J(w, b)/∂b    ← uses the NEW w, not the original
+b = temp_b
+```
+
+Here, the derivative for `b` is computed using the **already-updated** `w`. That changes the math: `temp_b` is not the same value it would have been in the simultaneous version, and the resulting `b` differs too.
+
+### Why Simultaneous Matters
+
+| | Simultaneous (correct) | Non-simultaneous (incorrect) |
+|---|---|---|
+| Inputs to both derivatives | Original `w`, `b` | Original `w`, `b` — then updated `w`, original `b` |
+| What's being optimized | Gradient descent on `J(w, b)` | A different algorithm with different properties |
+| Convention | This is what "gradient descent" means | Might work in practice but is technically wrong |
+
+> When people say "gradient descent," they always mean the **simultaneous** version. Stick to that.
+
+### Key Insight
+
+> Gradient descent repeatedly nudges every parameter in the direction that decreases `J` the most, with all parameters updated together using the values from the start of the step. The learning rate `α` controls step size; the derivative controls direction and magnitude.
+
+---
+
+## Gradient Descent — Derivative Intuition
+
+To build intuition for **why** the derivative term in gradient descent makes the algorithm move toward the minimum, simplify the problem to a single parameter.
+
+### Simplified Setup — One Parameter
+
+Drop `b` and consider a cost function of just `w`:
+
+$$
+J(w)
+$$
+
+The update rule becomes:
+
+$$
+w := w - \alpha \, \frac{d}{dw} J(w)
+$$
+
+This lets us plot `J(w)` as a **2D curve** (horizontal axis = `w`, vertical axis = `J`) instead of a 3D surface.
+
+> Technically `∂/∂w` is the **partial derivative** and `d/dw` is the ordinary derivative. For implementing ML algorithms the distinction doesn't matter — both are referred to as "the derivative."
+
+### What the Derivative Actually Is
+
+At any point on the curve `J(w)`, draw the **tangent line** — a straight line that just touches the curve at that point.
+
+- The **slope** of that tangent line **is** the derivative `d/dw J(w)` at that point.
+- Slope = height ÷ width of a small triangle drawn along the tangent.
+
+| Tangent direction | Slope sign | Derivative sign |
+|---|---|---|
+| Up and to the right | Positive (e.g. 2/1 = 2) | `> 0` |
+| Down and to the right | Negative (e.g. −2/1 = −2) | `< 0` |
+
+### Case 1 — Start to the Right of the Minimum (Positive Slope)
+
+You initialize `w` at a point where the tangent slopes **up and to the right**. The derivative is **positive**.
+
+$$
+w := w - \alpha \cdot (\text{positive number})
+$$
+
+- `α` is always positive, so you're **subtracting a positive number** from `w`.
+- → `w` **decreases** (moves **left** on the graph).
+- Moving left from this point brings you **closer to the minimum** — cost goes down.
+
+✓ Correct behavior.
+
+### Case 2 — Start to the Left of the Minimum (Negative Slope)
+
+You initialize `w` at a point where the tangent slopes **down to the right**. The derivative is **negative**.
+
+$$
+w := w - \alpha \cdot (\text{negative number})
+$$
+
+- Subtracting a negative number = **adding** a positive number.
+- → `w` **increases** (moves **right** on the graph).
+- Moving right from this point brings you **closer to the minimum** — cost goes down.
+
+✓ Correct behavior.
+
+### Why This Always Works
+
+| Side of minimum | Slope sign | Update direction | Result |
+|---|---|---|---|
+| Right of min | Positive | `w` decreases | Moves toward min |
+| Left of min | Negative | `w` increases | Moves toward min |
+
+> The **sign** of the derivative automatically tells gradient descent which way to step. The **magnitude** of the derivative (combined with `α`) controls how big the step is.
+
+### Key Insight
+
+> The derivative encodes both **which way is downhill** and **how steep the slope is** at your current point. Subtracting `α × derivative` always nudges `w` in the direction that reduces `J` — regardless of which side of the minimum you start on.
+
+> Next: how the choice of learning rate `α` affects convergence — what goes wrong if it's too small or too big.
+
+---
+
+## Gradient Descent — Learning Rate Intuition
+
+The learning rate `α` has a **huge** impact on whether gradient descent works well, works slowly, or doesn't work at all. The update rule is unchanged:
+
+$$
+w := w - \alpha \, \frac{d}{dw} J(w)
+$$
+
+What changes is how `α` is chosen.
+
+### If `α` Is Too Small
+
+Multiplying the derivative by something like `0.0000001` makes every step minuscule.
+
+- Each step **does** move `w` in the right direction (downhill).
+- But the steps are so tiny that you need an enormous number of them to reach the minimum.
+- **Result:** gradient descent still works, but is **extremely slow**.
+
+> Symptom: cost `J` keeps going down, but the trajectory inches forward step-by-step over many, many iterations.
+
+### If `α` Is Too Large
+
+Now the steps are massive. Starting near the minimum:
+
+1. The derivative points toward the minimum, but `α` makes you **overshoot it** — you land far on the other side, **at a higher cost than where you started**.
+2. The derivative at the new point points back the other way — but `α` is still too large, so you overshoot **again**, landing even further out.
+3. Each step takes you **further from the minimum**, not closer.
+
+**Result:** gradient descent may **fail to converge** — and can even **diverge** (cost grows over time).
+
+| `α` size | Behavior |
+|---|---|
+| Too small | Converges, but painfully slowly |
+| Too large | Overshoots the minimum; may oscillate or diverge |
+| Just right | Steady, efficient descent to the minimum |
+
+### What Happens at a Local Minimum?
+
+Suppose `w` is already at a local minimum (e.g. `w = 5`). What does one more gradient descent step do?
+
+At a local minimum, the tangent line is **horizontal**, so:
+
+$$
+\frac{d}{dw} J(w) = 0
+$$
+
+Plug this into the update:
+
+$$
+w := w - \alpha \cdot 0 = w
+$$
+
+`w` doesn't change. Gradient descent **leaves the parameter alone** — which is exactly what you want once you've found a minimum.
+
+> If your parameters have already reached a local minimum, further gradient descent steps do nothing. The solution stays put.
+
+### Why a Fixed `α` Still Reaches the Minimum
+
+You might expect that with a constant `α`, gradient descent would overshoot once it gets close. It doesn't — and here's why.
+
+As you approach a local minimum, the curve **flattens out**. Each step looks like this:
+
+| Step | Slope (derivative) | Step size = `α × derivative` |
+|---|---|---|
+| 1 — far from min | Steep | Large step |
+| 2 — closer | Less steep | Smaller step |
+| 3 — closer still | Even less steep | Even smaller step |
+| ... | → 0 | → 0 |
+
+> Gradient descent **automatically** takes smaller steps as it nears a minimum, because the derivative itself shrinks. You don't need to decrease `α` manually.
+
+### Key Insight
+
+> The learning rate sets the *baseline* step size, but the *actual* step size at each iteration is `α × |derivative|`. Since the derivative shrinks near a minimum, a well-chosen fixed `α` produces large strides far from the minimum and gentle nudges as you arrive.
+
+### Beyond Linear Regression
+
+Gradient descent can minimize **any** cost function `J` — not just the squared error cost used in linear regression. Up next: plug the squared error cost back in and combine it with gradient descent to build the **first complete learning algorithm** — linear regression.
+
+---
+
+## Gradient Descent for Linear Regression
+
+Now we put the three pieces together:
+
+| Piece | Formula |
+|---|---|
+| **Model** | $f_{w,b}(x) = wx + b$ |
+| **Cost** (squared error) | $J(w, b) = \tfrac{1}{2m} \sum_{i=1}^{m} (f_{w,b}(x^{(i)}) - y^{(i)})^2$ |
+| **Algorithm** (gradient descent) | $w := w - \alpha \, \tfrac{\partial}{\partial w} J(w, b)$, $b := b - \alpha \, \tfrac{\partial}{\partial b} J(w, b)$ |
+
+### The Derivatives
+
+For the squared error cost with the linear model, the partial derivatives work out to:
+
+$$
+\frac{\partial}{\partial w} J(w, b) = \frac{1}{m} \sum_{i=1}^{m} \left( f_{w,b}(x^{(i)}) - y^{(i)} \right) \, x^{(i)}
+$$
+
+$$
+\frac{\partial}{\partial b} J(w, b) = \frac{1}{m} \sum_{i=1}^{m} \left( f_{w,b}(x^{(i)}) - y^{(i)} \right)
+$$
+
+Both formulas have the same `(prediction − target)` error term inside the sum. The only difference: the `w`-derivative multiplies each error by `x⁽ⁱ⁾`; the `b`-derivative doesn't.
+
+> If you don't care about *where* these come from, you can stop here — these two formulas are all you need to implement linear regression with gradient descent.
+
+### (Optional) Where the Derivatives Come From
+
+Using calculus, expand the cost function:
+
+$$
+\frac{\partial}{\partial w} J(w, b)
+= \frac{\partial}{\partial w} \left[ \frac{1}{2m} \sum_{i=1}^{m} \left( w x^{(i)} + b - y^{(i)} \right)^2 \right]
+$$
+
+Apply the chain rule. The exponent `2` comes down and the `1/2m` and the `2` cancel — leaving:
+
+$$
+\frac{\partial}{\partial w} J(w, b)
+= \frac{1}{m} \sum_{i=1}^{m} \left( w x^{(i)} + b - y^{(i)} \right) \, x^{(i)}
+$$
+
+> This is **why** the cost function uses `1/(2m)` instead of `1/m` — the `2` cancels cleanly with the exponent during differentiation, leaving a tidier formula. Either form works; the `1/2` is purely for convenience.
+
+The `b`-derivative is the same calculation but without the inner `x⁽ⁱ⁾` factor (since `b` differentiated with respect to itself is `1`):
+
+$$
+\frac{\partial}{\partial b} J(w, b) = \frac{1}{m} \sum_{i=1}^{m} \left( w x^{(i)} + b - y^{(i)} \right)
+$$
+
+### The Full Algorithm
+
+Repeat until convergence (with **simultaneous** update of `w` and `b`):
+
+$$
+w := w - \alpha \, \frac{1}{m} \sum_{i=1}^{m} \left( f_{w,b}(x^{(i)}) - y^{(i)} \right) x^{(i)}
+$$
+
+$$
+b := b - \alpha \, \frac{1}{m} \sum_{i=1}^{m} \left( f_{w,b}(x^{(i)}) - y^{(i)} \right)
+$$
+
+where $f_{w,b}(x^{(i)}) = w x^{(i)} + b$.
+
+### Local vs Global Minima — and Why Linear Regression Is Lucky
+
+In general, gradient descent can settle into a **local minimum** rather than the **global minimum**, depending on where you initialize the parameters. A surface with multiple valleys can trap you in whichever valley you start above.
+
+But the squared error cost function for linear regression has a special property:
+
+> The squared error cost function is **convex** — bowl-shaped, with exactly **one** minimum (the global minimum). It has **no other local minima**.
+
+| Cost surface type | Local minima | Where gradient descent lands |
+|---|---|---|
+| Non-convex (e.g. neural net cost) | Multiple | Depends on initialization — may get stuck |
+| **Convex** (squared error + linear model) | Exactly one (the global min) | Always the global minimum (with proper `α`) |
+
+### Key Insight
+
+> Because the squared error cost is convex, gradient descent on linear regression will **always converge to the global minimum** — as long as the learning rate is chosen appropriately. There are no bad starting points and no local-minima traps.
+
+---
+
+## Gradient Descent in Action
+
+What does it actually look like to run gradient descent on a linear regression problem? Three views move together at each step:
+
+| View | What it shows |
+|---|---|
+| **Model plot** (top left) | The line `f(x) = wx + b` overlaid on the training data |
+| **Contour plot** (top right) | A 2D top-down map of `J(w, b)` — `(w, b)` plotted as a point |
+| **Surface plot** (bottom) | The 3D bowl of `J(w, b)` — `(w, b, J)` plotted as a point on the surface |
+
+### Walking Through an Example
+
+Initialize with `w = -0.1`, `b = 900`, so the starting line is:
+
+$$
+f(x) = -0.1x + 900
+$$
+
+This is a poor fit — a slightly downward line that overshoots most prices.
+
+**Each gradient descent step:**
+
+1. The point on the cost surface (and on the contour plot) moves **downhill** toward the bowl's minimum.
+2. The line on the model plot **shifts** to fit the training data a little better.
+3. The cost `J(w, b)` **decreases** with every step.
+
+After enough iterations, `(w, b)` reaches the **global minimum** at the center of the contour plot. The corresponding line on the model plot is the best straight-line fit to the data.
+
+### Using the Trained Model
+
+Once gradient descent converges, the final `w` and `b` define a model `f(x)` you can use to make predictions. For example:
+
+> Friend's house = 1250 sq ft → `f(1250)` ≈ **$250,000**.
+
+That's the whole point of training: get a function `f` that maps new inputs to useful outputs.
+
+### Batch Gradient Descent
+
+The specific variant we've been using has a name:
+
+> **Batch gradient descent** — every update step uses **all `m` training examples** (the entire "batch") to compute the derivatives.
+
+Notice the `∑ᵢ₌₁ᵐ` in the derivative formulas — that sum runs over **every** training example on every step.
+
+| Variant | Examples used per step |
+|---|---|
+| **Batch** gradient descent | All `m` training examples |
+| Stochastic gradient descent | One example |
+| Mini-batch gradient descent | A small subset |
+
+> The name *batch* isn't the most intuitive, but it's standard ML terminology. (DeepLearning.AI's newsletter "The Batch" is named after this idea.)
+
+For linear regression in this course, we use **batch** gradient descent.
+
+---
