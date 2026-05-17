@@ -7,12 +7,18 @@ y_train = np.array([300.0, 500.0])
 
 def compute_cost(x, y, w, b):
       m = x.shape[0]
-      cost = 0
 
-      for i in range(m):
-            f_wb = w * x[i] + b
-            cost = cost + (f_wb - y[i])**2
-      total_cost = 1 / (2 * m) * cost
+      # --- scalar loop version (reference) ---
+      # cost = 0
+      # for i in range(m):
+      #       f_wb = w * x[i] + b
+      #       cost = cost + (f_wb - y[i])**2
+      # total_cost = 1 / (2 * m) * cost
+
+      # --- vectorized version ---
+      f_wb = w * x + b              # shape (m,) instead of one scalar per iter
+      err = f_wb - y                # shape (m,)
+      total_cost = (1 / (2 * m)) * np.dot(err, err)   # sum of squared errors
       return total_cost
 
 def compute_gradient(x, y, w, b):
@@ -29,17 +35,24 @@ def compute_gradient(x, y, w, b):
 
       # Number of training examples
       m = x.shape[0]
-      dj_dw = 0
-      dj_db = 0
 
-      for i in range(m):
-            f_wb = w * x[i] + b
-            dj_dw_i = (f_wb - y[i]) * x[i]
-            dj_db_i = (f_wb - y[i])
-            dj_db += dj_db_i
-            dj_dw += dj_dw_i
-      dj_dw = dj_dw / m
-      dj_db = dj_db / m
+      # --- scalar loop version (reference) ---
+      # dj_dw = 0
+      # dj_db = 0
+      # for i in range(m):
+      #       f_wb = w * x[i] + b
+      #       dj_dw_i = (f_wb - y[i]) * x[i]
+      #       dj_db_i = (f_wb - y[i])
+      #       dj_db += dj_db_i
+      #       dj_dw += dj_dw_i
+      # dj_dw = dj_dw / m
+      # dj_db = dj_db / m
+
+      # --- vectorized version ---
+      f_wb = w * x + b              # predictions, shape (m,)
+      err = f_wb - y                # residuals, shape (m,)
+      dj_dw = np.dot(err, x) / m    # sum(err_i * x_i) / m
+      dj_db = np.sum(err) / m       # sum(err_i)       / m
 
       return dj_dw, dj_db
 
