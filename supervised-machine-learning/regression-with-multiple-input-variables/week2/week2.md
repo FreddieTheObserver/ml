@@ -316,3 +316,98 @@ This is exactly the trick used to rewrite `compute_cost` and `compute_gradient` 
 - `dj_dw += (f_wb - y[i]) * x[i]` → `np.dot(err, x)`
 
 The parameter update `w = w - alpha * dj_dw` in the existing `gradient_descent` function is *already* the vectorized-update pattern from this lesson — even though `w` was a single scalar in week 1. Once `w` becomes a vector (multiple features, next lesson), the **exact same line** keeps working with no code change. That's the power of vectorized code: it generalizes from `n = 1` to `n = 1,000,000` without rewriting the update rule.
+
+## Gradient Descent for Multiple Linear Regression
+
+Putting it together: **multiple linear regression + vector notation + vectorization** → gradient descent that scales to `n` features with almost no code change from the one-feature version.
+
+### Quick Recap — The Model in Vector Form
+
+| Piece | One feature (week 1) | `n` features (now) |
+|---|---|---|
+| Parameters | `w` (scalar), `b` (scalar) | `w = [w_1, ..., w_n]` (vector), `b` (scalar) |
+| Model | `f_w,b(x) = w·x + b` | `f_w,b(x) = w · x + b` (dot product) |
+| Cost | `J(w, b)` | `J(w, b)` — same name, but `w` is now a vector |
+
+`J` still returns a single number; it just takes a vector input now.
+
+### The Update Rule — Side by Side
+
+![Gradient descent update rules compared. Left ("One feature"): repeat { w = w − α · (1/m) Σ (f(x⁽ⁱ⁾) − y⁽ⁱ⁾)·x⁽ⁱ⁾ ; b = b − α · (1/m) Σ (f(x⁽ⁱ⁾) − y⁽ⁱ⁾) } simultaneously update w, b. Right ("n features, n ≥ 2"): repeat { w_1 = w_1 − α · (1/m) Σ (f(x⁽ⁱ⁾) − y⁽ⁱ⁾)·x_1⁽ⁱ⁾ ; ... ; w_n = w_n − α · (1/m) Σ (f(x⁽ⁱ⁾) − y⁽ⁱ⁾)·x_n⁽ⁱ⁾ ; b = b − α · (1/m) Σ (f(x⁽ⁱ⁾) − y⁽ⁱ⁾) } simultaneously update w_j (for j = 1..n) and b. The summation portions are highlighted on both sides to show they are the partial derivatives of J with respect to w (left) and w_1 (right).](images/gradient-descent-comparison.png)
+
+**One feature** (week 1):
+
+```
+repeat {
+    w := w − α · (1/m) Σ_{i=1..m} (f_w,b(x⁽ⁱ⁾) − y⁽ⁱ⁾) · x⁽ⁱ⁾
+    b := b − α · (1/m) Σ_{i=1..m} (f_w,b(x⁽ⁱ⁾) − y⁽ⁱ⁾)
+}
+simultaneously update w, b
+```
+
+**`n` features** (now) — one update per parameter:
+
+```
+repeat {
+    w_1 := w_1 − α · (1/m) Σ_{i=1..m} (f_w,b(x⁽ⁱ⁾) − y⁽ⁱ⁾) · x⁽ⁱ⁾_1
+    w_2 := w_2 − α · (1/m) Σ_{i=1..m} (f_w,b(x⁽ⁱ⁾) − y⁽ⁱ⁾) · x⁽ⁱ⁾_2
+    ...
+    w_n := w_n − α · (1/m) Σ_{i=1..m} (f_w,b(x⁽ⁱ⁾) − y⁽ⁱ⁾) · x⁽ⁱ⁾_n
+    b   := b   − α · (1/m) Σ_{i=1..m} (f_w,b(x⁽ⁱ⁾) − y⁽ⁱ⁾)
+}
+simultaneously update w_j (for j = 1..n) and b
+```
+
+### What Actually Changed?
+
+Almost nothing — and that's the point.
+
+| Piece | One feature | `n` features |
+|---|---|---|
+| Error term `(f(x⁽ⁱ⁾) − y⁽ⁱ⁾)` | identical | identical |
+| Multiplied by | `x⁽ⁱ⁾` (only one feature exists) | `x⁽ⁱ⁾_j` (the j-th feature of example i) |
+| Number of `w` updates per step | 1 | `n` |
+| `b` update | unchanged | unchanged |
+
+The derivative `∂J/∂w_j` for any j has the exact same shape as the single-feature derivative — it just picks out feature `j` instead of "the only feature."
+
+> **Simultaneous update reminder.** Compute *all* the new values from the *current* `w_1, ..., w_n, b` first, then assign. Mixing old and new values mid-step corrupts the gradient. Same rule as week 1; just more parameters now.
+
+### Why Vectorization Makes This Trivial to Code
+
+Written out as `n` separate lines, the update looks tedious. With vectors and `np.dot`, it collapses to two lines that work for any `n`:
+
+```python
+err  = f - y                        # shape (m,) — one error per example
+dj_dw = (1/m) * X.T @ err           # shape (n,) — all n partial derivatives at once
+dj_db = (1/m) * err.sum()           # scalar
+w = w - alpha * dj_dw               # same line as week 1; now updates all n w_j in parallel
+b = b - alpha * dj_db
+```
+
+The update `w = w - alpha * dj_dw` is **exactly** the line that already works in [gradient-descent-for-linear-regression.py](../../introduction-to-machinelearning/week1/gradient-descent-for-linear-regression.py) — it just operates on a vector now instead of a scalar. No code change, scales from `n = 1` to `n = 1,000,000`.
+
+### Aside — The Normal Equation
+
+There's an alternative to gradient descent that works **only for linear regression**:
+
+```
+w, b = (X^T X)^(-1) X^T y           ← solved analytically, no iterations
+```
+
+| Pros | Cons |
+|---|---|
+| One-shot solution — no learning rate, no iterations | Doesn't generalize to logistic regression, neural networks, or any other algorithm |
+| | Very slow when `n` is large (matrix inversion is O(n³)) |
+| | You should almost never implement it yourself |
+
+Mature ML libraries (e.g. `sklearn.linear_model.LinearRegression`) may use it under the hood for small problems. **Job-interview vocab:** if someone says "normal equation," this is what they mean. Otherwise, prefer gradient descent — it's the one method that carries over to every other algorithm in the course.
+
+### Takeaway
+
+Multiple linear regression with gradient descent is essentially the week 1 algorithm with two changes:
+
+1. The model uses a dot product: `f(x) = w · x + b`.
+2. There are now `n` weight updates per iteration instead of 1.
+
+Vectorization makes both changes invisible in code — the update rule is the same line as before.
