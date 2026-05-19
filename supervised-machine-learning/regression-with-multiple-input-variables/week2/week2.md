@@ -411,3 +411,178 @@ Multiple linear regression with gradient descent is essentially the week 1 algor
 2. There are now `n` weight updates per iteration instead of 1.
 
 Vectorization makes both changes invisible in code — the update rule is the same line as before.
+
+## Feature Scaling — Why It Matters
+
+When features have **very different ranges**, gradient descent gets slow. Feature scaling rescales the features so they all sit in comparable ranges, which makes gradient descent run much faster.
+
+This lesson is the **motivation** — *why* scaling helps. The *how* (the actual rescaling formulas) comes in the next lesson.
+
+### Feature Range vs Parameter Size — A Concrete Example
+
+Predict house price using two features:
+
+| Feature | Typical range |
+|---|---|
+| `x_1` = size in sqft | **300 – 2000** (large numbers) |
+| `x_2` = # bedrooms | **0 – 5** (small numbers) |
+
+Take a specific house: `x_1 = 2000`, `x_2 = 5`, true price ≈ **$500k**.
+
+**Bad choice of parameters** — `w_1 = 50`, `w_2 = 0.1`, `b = 50`:
+
+```
+price = 50 · 2000 + 0.1 · 5 + 50
+      = 100,000   + 0.5     + 50
+      ≈ $100,000k   (~ $100 million — way off)
+```
+
+**Good choice of parameters** — flip them: `w_1 = 0.1`, `w_2 = 50`, `b = 50`:
+
+```
+price = 0.1 · 2000 + 50 · 5 + 50
+      = 200        + 250    + 50
+      = $500k   ✓
+```
+
+**The pattern:**
+
+| Feature range | Reasonable parameter |
+|---|---|
+| **Large** (e.g. `x_1` up to 2000) | **Small** (e.g. `w_1 ≈ 0.1`) |
+| **Small** (e.g. `x_2` up to 5) | **Large** (e.g. `w_2 ≈ 50`) |
+
+Intuition: the product `w_j · x_j` has to land in a sensible range (the price). If `x_j` is already huge, `w_j` must be tiny to compensate, and vice versa.
+
+### Why This Hurts Gradient Descent
+
+The mismatch between parameter scales distorts the cost function's geometry.
+
+![Four-panel comparison of feature size and gradient descent. Top-left ("Features" scatterplot, raw): x_1 (size in feet²) on x-axis from 300 to 2000, x_2 (# bedrooms) on y-axis from 0 to 5 — data forms a thin horizontal strip. Top-right ("Parameters" contour plot, raw): cost J(w, b) plotted over w_1 (narrow, 0 to 1) and w_2 (wide, 10 to 100) — contours are tall, skinny ellipses with red gradient-descent arrows zig-zagging back and forth across the narrow axis before reaching the center. Bottom-left ("Features" scatterplot, rescaled): both axes now span 0 to 1, data forms a roughly square cloud. Bottom-right ("Parameters" contour plot, rescaled): cost contours are now roughly concentric circles, with red gradient-descent arrows pointing in a direct path to the minimum.](images/feature-size-and-gradient-descent.png)
+
+**Scatter plot of the raw data** (`x_1` vs `x_2`, top-left):
+- Horizontal axis (`x_1`, sqft) stretches from ~300 to ~2000
+- Vertical axis (`x_2`, bedrooms) only spans 0 to 5
+
+So the data is stretched wide and short.
+
+**Contour plot of `J(w_1, w_2)`** (top-right) has the **opposite** stretch — tall and skinny:
+- `w_1`-axis is narrow (e.g. 0 to 1) — because `w_1` multiplies a huge feature, a tiny change to `w_1` swings the prediction (and the cost) a lot
+- `w_2`-axis is wide (e.g. 10 to 100) — because `w_2` multiplies a small feature, you need a much bigger change to `w_2` to move the cost
+
+**Gradient descent on tall-skinny contours** bounces back and forth across the narrow axis instead of heading straight to the minimum — it takes many iterations to converge.
+
+### What Scaling Fixes
+
+Rescale so `x_1` and `x_2` both fall in, say, **0 to 1** (bottom-left). Now:
+
+- Both axes of the data scatter plot are on comparable scales
+- The cost contours become **roughly circular** instead of tall-skinny ellipses (bottom-right)
+- Gradient descent walks in a much more **direct path** to the global minimum
+
+Same data, same algorithm — just rescaled axes. Gradient descent converges **much faster**.
+
+### Takeaway
+
+| Situation | Cost contours | Gradient descent |
+|---|---|---|
+| Features on very different scales | Tall, skinny ellipses | Bounces around — slow |
+| Features rescaled to comparable ranges | Roughly circular | Direct path — fast |
+
+> The model itself isn't broken without scaling — given enough iterations, gradient descent will still find good parameters. Scaling just gets you there **much faster** by reshaping the cost surface into something easier to descend. Next lesson: the actual rescaling formulas.
+
+## Feature Scaling — How to Do It
+
+Three common methods, all working on the same example (`x_1` = sqft in [300, 2000], `x_2` = bedrooms in [0, 5]).
+
+### Method 1 — Divide by the Max
+
+![Feature scaling by dividing by the max. Top-left: scatter plot of raw data with x_1 (size in feet²) ranging 300 to 2000 and x_2 (# bedrooms) ranging 0 to 5 — the data forms a thin horizontal strip. Right side shows the formulas: x_1,scaled = x_1 / 2000 (max), x_2,scaled = x_2 / 5 (max), with resulting ranges 0.15 ≤ x_1,scaled ≤ 1 and 0 ≤ x_2,scaled ≤ 1. Bottom-left: rescaled scatter plot where both axes now span comparable 0-to-1 ranges, producing a roughly square cloud of points.](images/feature-scaling-max.png)
+
+```
+x_1,scaled = x_1 / max(x_1)        → 0.15 ≤ x_1,scaled ≤ 1
+x_2,scaled = x_2 / max(x_2)        → 0    ≤ x_2,scaled ≤ 1
+```
+
+Cheapest method. Output is always in `[min/max, 1]` — always non-negative.
+
+### Method 2 — Mean Normalization
+
+Center the features around **zero** so they take on both positive and negative values, roughly in `[−1, +1]`.
+
+![Mean normalization. Top-left: raw data scatter, with annotations μ_1 = 600 (average of x_1) and μ_2 = 2.3 (average of x_2). Right side shows the formulas: x_1 = (x_1 − μ_1) / (2000 − 300) and x_2 = (x_2 − μ_2) / (5 − 0), where the denominator is max − min. Resulting ranges: −0.18 ≤ x_1 ≤ 0.82 and −0.46 ≤ x_2 ≤ 0.54. Bottom-left: normalized scatter plot now centered around the origin, with both axes spanning roughly −1 to 1.](images/mean-normalization.png)
+
+```
+x_j,normalized = (x_j − μ_j) / (max_j − min_j)
+```
+
+where `μ_j` is the **mean** (average) of feature `j` across the training set.
+
+For the housing example with `μ_1 = 600`, `μ_2 = 2.3`:
+
+```
+x_1,normalized = (x_1 − 600) / (2000 − 300)    → −0.18 ≤ x_1,norm ≤ 0.82
+x_2,normalized = (x_2 − 2.3) / (5    − 0)      → −0.46 ≤ x_2,norm ≤ 0.54
+```
+
+Cloud of data points is now centered around the origin.
+
+### Method 3 — Z-Score Normalization
+
+Same idea as mean normalization, but the denominator is the **standard deviation** `σ` instead of `max − min`.
+
+![Z-score normalization. Top-left: raw data scatter with annotations μ_1 = 600, μ_2 = 2.3, σ_1 = 450, σ_2 = 1.4, plus a small bell-curve diagram illustrating that σ is the standard deviation of a normal distribution. Right side shows the formulas: x_1 = (x_1 − μ_1) / σ_1 and x_2 = (x_2 − μ_2) / σ_2. Resulting ranges: −0.67 ≤ x_1 ≤ 3.1 and −1.6 ≤ x_2 ≤ 1.9. Bottom-left: normalized scatter plot with both axes spanning roughly −3 to 3, centered at the origin.](images/z-score-normalization.png)
+
+```
+x_j,normalized = (x_j − μ_j) / σ_j
+```
+
+For the housing example with `μ_1 = 600, σ_1 = 450` and `μ_2 = 2.3, σ_2 = 1.4`:
+
+```
+x_1,normalized = (x_1 − 600) / 450    → −0.67 ≤ x_1,norm ≤ 3.1
+x_2,normalized = (x_2 − 2.3) / 1.4    → −1.6  ≤ x_2,norm ≤ 1.9
+```
+
+> **What's `σ`?** The **standard deviation** — a measure of how spread-out the values are around the mean. If you know the normal (bell-curve / Gaussian) distribution, this is its width parameter. If not, you don't need to know the formula for this course — `np.std(x)` computes it.
+
+### Quick Comparison
+
+| Method | Formula | Typical output range | Centered at 0? |
+|---|---|---|---|
+| Divide by max | `x / max` | `[min/max, 1]` | &cross; |
+| Mean normalization | `(x − μ) / (max − min)` | roughly `[−1, +1]` | &check; |
+| Z-score normalization | `(x − μ) / σ` | roughly `[−3, +3]` | &check; |
+
+All three shrink the range and equalize feature scales. Z-score is the most common in practice.
+
+### Rule of Thumb — When to Scale
+
+Aim for each feature to land roughly in `[−1, +1]`. The bounds are **loose** — close is good enough.
+
+| Feature range | Need to scale? |
+|---|---|
+| `−1 to +1`, `−3 to +3`, `−0.3 to +0.3` | Fine as-is |
+| `0 to 3`, `−2 to +0.5` | Fine — but no harm rescaling |
+| `−100 to +100` (e.g. large raw values) | **Yes** — rescale toward `[−1, +1]` |
+| `−0.001 to +0.001` (tiny values) | **Yes** — rescale up |
+| `98.6 to 105` (e.g. body temp in °F — values cluster around 100) | **Yes** — gradient descent will be slow otherwise |
+
+> There's almost never any harm in rescaling. **When in doubt, do it.** The cost is a few lines of code; the benefit can be 10× faster training.
+
+### NumPy Sketch
+
+```python
+# Z-score (most common)
+mu    = X.mean(axis=0)        # mean of each column → shape (n,)
+sigma = X.std(axis=0)         # std of each column  → shape (n,)
+X_norm = (X - mu) / sigma     # broadcasts: (m, n) − (n,) / (n,) → (m, n)
+
+# Mean normalization
+X_norm = (X - X.mean(axis=0)) / (X.max(axis=0) - X.min(axis=0))
+
+# Divide by max
+X_norm = X / X.max(axis=0)
+```
+
+> **Important:** save `μ` and `σ` (or whatever statistics you used) from the **training set** and reuse them to scale any new data at prediction time. Don't recompute them on the test set or on a single new example — that would change the meaning of the scaled values.
