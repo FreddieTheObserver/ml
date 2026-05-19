@@ -412,6 +412,247 @@ Multiple linear regression with gradient descent is essentially the week 1 algor
 
 Vectorization makes both changes invisible in code — the update rule is the same line as before.
 
+## Checking Whether Gradient Descent Is Converging
+
+When running gradient descent, you need a way to tell whether it is **helping** — i.e. whether you are finding parameters `w` and `b` close to the **global minimum** of `J(w, b)`. Learning to recognize a well-running implementation also sets you up to choose a good learning rate `α` (covered in the next section).
+
+### Reminder — The Update Rule
+
+```
+repeat {
+    w := w − α · ∂J/∂w
+    b := b − α · ∂J/∂b
+}
+simultaneously update w, b
+```
+
+`α` (learning rate) is one of the most important hyperparameters. A practical habit: **plot the cost `J` after every iteration** and inspect the curve.
+
+### The Learning Curve
+
+**What to plot:**
+
+| Axis | Meaning |
+|---|---|
+| **Horizontal** | Number of gradient descent **iterations** (each iteration = one simultaneous update of all parameters) |
+| **Vertical** | Cost `J(w, b)` computed on the **training set** using the current `w`, `b` after that iteration |
+
+This plot is called a **learning curve**.
+
+![Learning curve (left): J(w,b) vs # iterations — cost should decrease each step and flatten when converged; markers at 100 and 200 iterations, likely converged by ~400. Automatic convergence test (right): stop when J decreases by ≤ ε (e.g. 10⁻³) in one iteration.](images/learning-curve-convergence.png)
+
+> **Not the same as earlier plots.** In week 1 you also plotted cost vs `w` or vs `(w, b)` on contour/surface plots — those had a **parameter** on the horizontal axis. Here the horizontal axis is **iteration count**, not `w`, `b`, or any feature.
+
+**How to read a point on the curve:**
+
+- The point at iteration **100** means: after 100 updates, you have some learned `w`, `b`; plug them into `J(w, b)` → that height on the vertical axis.
+- The point at iteration **200** is `J` for the parameters you got after 200 updates — and so on.
+
+The curve shows how cost changes **step by step** as gradient descent runs.
+
+### What a Healthy Learning Curve Looks Like
+
+If gradient descent is working properly:
+
+1. **`J` should decrease after every iteration** (or at least never increase in a well-tuned run).
+2. Eventually **`J` levels off** — the curve flattens and stops decreasing much. That usually means gradient descent has **converged** (found parameters near a minimum). See the left side of the figure above (~400 iterations).
+
+In a typical run you might see cost drop quickly at first, then improve slowly on the flat part — same idea as the two-panel cost plot in [gradient-descent-for-linear-regression.py](../../introduction-to-machinelearning/week1/gradient-descent-for-linear-regression.py) (`J_hist[:100]` vs `J_hist[1000:]`).
+
+### Red Flags
+
+| Observation | Likely cause |
+|---|---|
+| **`J` increases** after an iteration | `α` too large (most common), or a **bug** in the implementation (e.g. wrong sign, non-simultaneous update) |
+| **`J` barely moves** from the start | `α` too small — converging, but painfully slowly |
+| **`J` explodes** upward | `α` far too large — divergence (see the `alpha = 0.8` demo at the bottom of the week 1 script) |
+
+### How Many Iterations Until Convergence?
+
+**Highly variable** — depends on the problem, features, scaling, and `α`:
+
+| Application | Iterations to converge (example) |
+|---|---|
+| One problem | ~30 |
+| Another | 1,000 or 100,000+ |
+
+It is **hard to predict in advance**. That is why you plot a learning curve: discover when training has effectively finished for *your* model and dataset, instead of guessing a fixed iteration count.
+
+### Automatic Convergence Test (Optional)
+
+See the **right side** of the figure above.
+
+Let **ε** (epsilon) be a small threshold, e.g. `0.001` or `10⁻³`.
+
+**Rule:** if `J` decreases by **less than ε** on one iteration, you are likely on the flat part of the curve → you can **declare convergence** and stop training.
+
+```python
+# sketch — inside the gradient descent loop, after updating w, b
+J_new = cost_function(x, y, w, b)
+if len(J_history) > 0 and abs(J_history[-1] - J_new) < epsilon:
+    break
+J_history.append(J_new)
+```
+
+**Caveat:** picking ε is often fiddly. Many practitioners (including Andrew Ng in this course) **prefer inspecting the learning curve** over relying only on an automatic test. The plot also surfaces problems (divergence, stuck cost) that a single threshold might miss.
+
+### Convergence vs Global Minimum
+
+**Convergence** here means: gradient descent has settled — parameters are no longer changing much and `J` has stopped decreasing meaningfully.
+
+For **linear regression with squared error**, the cost surface is **convex**, so convergence (with a suitable `α`) means you reached the **global minimum**, not just a local one. That guarantee does not carry over to neural networks or other non-convex costs.
+
+### Connection to Week 1 Code
+
+[gradient-descent-for-linear-regression.py](../../introduction-to-machinelearning/week1/gradient-descent-for-linear-regression.py) already builds a learning curve:
+
+```python
+J_history.append(cost_function(x, y, w, b))   # after each update
+...
+ax1.plot(J_hist[:100])                         # early iterations
+ax2.plot(..., J_hist[1000:])                   # late iterations
+```
+
+Each entry in `J_history` is exactly “cost after iteration `i`” for the learning-curve plot described above.
+
+### Takeaway
+
+| Practice | Why |
+|---|---|
+| Plot **`J` vs iteration** | See if GD is working and when it has converged |
+| Expect **`J` to decrease** each step | Increases → bad `α` or bug |
+| Look for a **flat tail** | Training can stop; parameters are near optimal |
+| Use **ε-based stopping** optionally | Convenient in code; threshold can be hard to tune |
+| **Next:** choose **`α`** using these same curves | See section below |
+
+> Other types of learning curves appear later in the specialization (e.g. plotting error vs training set size). The name is reused; context tells you which axes mean what.
+
+## Choosing the Learning Rate α
+
+Your algorithm runs much better with an appropriate **`α` (learning rate)**:
+
+| `α` | Effect |
+|---|---|
+| **Too small** | Gradient descent works, but takes **many iterations** to converge |
+| **Too large** | May **not converge** — cost can bounce, overshoot, or explode |
+
+Choosing `α` is an important part of training many learning algorithms. Use the **learning curve** (`J` vs iteration) from the previous section as your main diagnostic.
+
+### When `J` Goes Up — Overshooting
+
+If you plot cost over iterations and **`J` sometimes increases** (not just a flat tail — actual upward steps), treat that as a clear sign gradient descent is **not working properly**. Common causes:
+
+1. **`α` is too large** (most common)
+2. **Bug in the code** (wrong sign, non-simultaneous update, etc.)
+
+**Intuition in one parameter** (e.g. `w_1` on the horizontal axis, `J` on the vertical):
+
+```
+J
+│     ╱╲
+│    ╱  ╲
+│   ╱    ╲
+│  ●→  ←●→  ← overshoot: step lands on the other side of the bowl
+│ ╱        ╲
+└────────────► w_1
+```
+
+With **`α` too big**, each update **overshoots** the minimum: you step past the bottom, then past it again on the next iteration — so **`J` can go up** on some steps even though the algorithm is “trying” to descend.
+
+With a **smaller `α`**, each step is shorter: you move downhill a little at a time and **`J` should decrease consistently** until you reach the global minimum (for convex linear regression).
+
+### When `J` Always Increases — Wrong Sign or Huge `α`
+
+Sometimes **`J` increases on every single iteration** — a steady upward learning curve. That often means:
+
+| Cause | What went wrong |
+|---|---|
+| **`α` far too large** | Steps are so big you climb out of the bowl (divergence) |
+| **Wrong update sign** | e.g. `w := w + α · ∂J/∂w` instead of **`w := w − α · ∂J/∂w`** |
+
+The **`−` sign is required**. Adding the gradient term moves you **away** from the minimum instead of toward it, so cost rises every step.
+
+```python
+# wrong — cost tends to increase
+w = w + alpha * dj_dw
+
+# correct
+w = w - alpha * dj_dw
+```
+
+See the divergence demo at the bottom of [gradient-descent-for-linear-regression.py](../../introduction-to-machinelearning/week1/gradient-descent-for-linear-regression.py) (`tmp_alpha = 8.0e-1`).
+
+### Debugging Tip — Use a Very Small `α`
+
+> With a **small enough** learning rate, **`J` should decrease on every iteration**.
+
+If gradient descent misbehaves:
+
+1. Set **`α` to something very small** (e.g. `1e-6` or smaller than your normal guess).
+2. Run a few iterations and watch `J`.
+
+| Outcome | Interpretation |
+|---|---|
+| **`J` decreases every step** | Implementation is likely **correct**; your original `α` was probably too large |
+| **`J` still sometimes increases** | Likely a **bug** in the code (sign, simultaneous update, cost/gradient mismatch) |
+
+**Important:** a tiny `α` is a **debugging step only**. It is not the most efficient choice for real training — it converges too slowly. Once the code checks out, search for a larger `α` that still behaves well.
+
+### How to Pick `α` in Practice
+
+**Workflow:**
+
+1. Try a **range** of values for `α`.
+2. For each candidate, run gradient descent for only a **handful of iterations** (not full training).
+3. Plot **`J` vs iteration** for each.
+4. Pick the `α` that makes cost drop **quickly** and **consistently** (smooth decrease, no bouncing).
+
+**Example search pattern** — multiply by ~3 each time:
+
+| Step | `α` |
+|---|---|
+| 1 | `0.001` |
+| 2 | `0.003` |
+| 3 | `0.01` |
+| 4 | `0.03` |
+| 5 | `0.1` |
+| … | … |
+
+You can also try powers of 10 first (`0.001`, `0.01`, `0.1`) and refine between the values that work.
+
+**Goal of the search:**
+
+- Find an `α` that is **too small** (slow but stable decrease).
+- Find an `α` that is **too large** (`J` bounces or diverges).
+- Choose the **largest `α` that still gives steady decrease**, or something **slightly smaller** than the largest “reasonable” value you found — a good balance between speed and stability.
+
+```
+α too small          α just right           α too large
+J  \                 J  \                   J  /\  /\
+   \___                  \___                    \/  (bounce or ↑)
+   slow                   fast + stable
+```
+
+### Link to Feature Scaling and the Optional Lab
+
+The upcoming optional lab lets you experiment in code with:
+
+- **Feature scaling** (how rescaling inputs changes training)
+- **Different values of `α`** — better vs worse learning curves
+
+Running that lab after reading this section builds intuition for both topics. Feature scaling is covered in the notes below; good scaling often lets you use a **larger** `α` without overshooting.
+
+### Takeaway
+
+| Symptom on learning curve | Action |
+|---|---|
+| `J` bounces up and down | Reduce `α`; check for bugs |
+| `J` rises every iteration | Reduce `α`; verify **`w := w − α·∂J/∂w`** (minus sign) |
+| `J` decreases but very slowly | Increase `α` (after confirming stability) |
+| Unsure if code is correct | Try **very small `α`** — should decrease every step |
+
+> **Next:** **feature engineering** — custom features so linear regression can fit **curves**, not only straight lines.
+
 ## Feature Scaling — Why It Matters
 
 When features have **very different ranges**, gradient descent gets slow. Feature scaling rescales the features so they all sit in comparable ranges, which makes gradient descent run much faster.

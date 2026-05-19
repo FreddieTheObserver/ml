@@ -1,5 +1,6 @@
 # Local agent/config folders
 .claude/
+.cursor/
 
 # IDE/editor folders
 .idea/
