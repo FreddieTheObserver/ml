@@ -135,7 +135,7 @@ def gradient_descent(X, y, w_in, b_in, alpha, num_iters, cost_function, gradient
             J_history (list): history of cost values
       """
       J_history = []
-      w = copy.deepcopy(w_in)
+      w = w_in.copy()
       b = b_in
 
       for i in range(num_iters):

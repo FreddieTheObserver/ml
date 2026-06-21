@@ -827,3 +827,152 @@ X_norm = X / X.max(axis=0)
 ```
 
 > **Important:** save `μ` and `σ` (or whatever statistics you used) from the **training set** and reuse them to scale any new data at prediction time. Don't recompute them on the test set or on a single new example — that would change the meaning of the scaled values.
+
+## Feature Engineering
+
+The features you feed the model can matter as much as the algorithm itself. For many practical problems, **choosing or engineering the right features is a critical step** to making the algorithm work well. Rather than always using the raw features you happen to start with, you can use **knowledge or intuition about the problem** to design better ones.
+
+### Motivating Example — Predicting House Price
+
+Suppose each house comes with two features describing the rectangular plot of land it sits on:
+
+| Feature | Meaning |
+|---|---|
+| `x_1` = **frontage** | Width of the lot (the "frontage" in real-estate terms) |
+| `x_2` = **depth** | Depth of the lot |
+
+A straightforward model:
+
+```
+f_w,b(x) = w_1·x_1 + w_2·x_2 + b
+```
+
+This can work okay. But there's a more effective option hiding in the features.
+
+### The Insight — Combine Features Into a New One
+
+The **area** of the lot is `frontage × depth`, and intuitively the area is probably **more predictive of price** than width and depth on their own. So define a *new* feature:
+
+```
+x_3 = x_1 · x_2          ← area of the lot
+```
+
+and add it to the model:
+
+```
+f_w,b(x) = w_1·x_1 + w_2·x_2 + w_3·x_3 + b
+```
+
+Now the model can **let the data decide** what matters most — it can lean on `w_1` (frontage), `w_2` (depth), `w_3` (area), or any mix, by learning the corresponding weights. You haven't thrown away the originals; you've given the algorithm an extra, more informative option.
+
+```python
+# x_3 is just derived from the existing columns before training
+X = np.column_stack([X, X[:, 0] * X[:, 1]])   # append frontage × depth as a new column
+```
+
+### What Feature Engineering Is
+
+> **Feature engineering:** using your knowledge or intuition about the problem to **design new features** — usually by **transforming or combining** the original features — so the learning algorithm can make more accurate predictions.
+
+| Approach | Example |
+|---|---|
+| Use raw features as-is | `frontage`, `depth` |
+| **Engineer** a new feature | `area = frontage × depth` |
+
+Depending on your insight into the application, defining new features like this can give you a **much better model** than the raw features alone.
+
+### Connection to Feature Scaling
+
+A newly engineered feature can land on a very different scale from the originals. Here `x_3 = x_1·x_2` is a **product**, so its range is roughly the *product* of the two original ranges — far larger than either. That's exactly the situation [Feature Scaling](#feature-scaling--why-it-matters) addresses: after engineering features, rescale them (z-score, etc.) so gradient descent stays fast.
+
+### Takeaway
+
+| Idea | Why it matters |
+|---|---|
+| Features ≠ fixed | You can create new ones, not just use what you're given |
+| Combine/transform with domain intuition | `area = width × depth` often beats the parts |
+| Let the model weigh all options | Keep originals *and* the engineered feature; weights decide |
+| Re-scale engineered features | Products/powers blow up the range — scaling keeps GD fast |
+
+> **Next:** one flavor of feature engineering lets you fit **curves and other nonlinear functions** — not just straight lines — to your data. That's **polynomial regression**, covered in the next video.
+
+## Polynomial Regression
+
+Combine **multiple linear regression** with **feature engineering** and you get **polynomial regression** — a way to fit **curves** (nonlinear functions), not just straight lines, to your data. The trick: create new features by raising the original feature to a power (`x²`, `x³`, …), then fit a *linear* model on those engineered features.
+
+> Key idea: the model is still **linear in its parameters** `w, b` — it's only nonlinear in the original input `x`. So the exact same gradient descent code keeps working; you just feed it `x, x², x³, …` as separate features.
+
+### Motivating Example — A Curved Housing Dataset
+
+Feature `x` = size in sqft. A straight line doesn't fit the data well, so try curves:
+
+| Model | Features used | Shape | Problem? |
+|---|---|---|---|
+| Linear | `x` | straight line | underfits the curve |
+| **Quadratic** | `x`, `x²` | parabola | eventually **comes back down** — implies price *drops* as size grows, which makes no sense (bigger houses cost more) |
+| **Cubic** | `x`, `x²`, `x³` | curve that dips then rises | size eventually **comes back up** → better fit for this data |
+
+```
+quadratic:  f(x) = w_1·x + w_2·x²        + b
+cubic:      f(x) = w_1·x + w_2·x² + w_3·x³ + b
+```
+
+For the cubic model, the three features are simply:
+
+```
+feature 1 = x        (size)
+feature 2 = x²       (size squared)
+feature 3 = x³       (size cubed)
+```
+
+Each is just a column derived from the original `x` before training — the model learns `w_1, w_2, w_3` to weight them.
+
+### Feature Scaling Becomes Critical
+
+When features are **powers** of the original, their ranges explode. If size ranges `1 – 1,000`:
+
+| Feature | Range |
+|---|---|
+| `x` (size) | 1 – 1,000 |
+| `x²` (size²) | 1 – 1,000,000 |
+| `x³` (size³) | 1 – 1,000,000,000 |
+
+These ranges are wildly different, so **feature scaling is essential** when using gradient descent here — otherwise the cost contours become extremely skewed and training crawls. (See [Feature Scaling](#feature-scaling--why-it-matters) above; z-score normalization handles this cleanly.)
+
+### Other Feature Choices — e.g. Square Root
+
+Powers aren't the only option. Another reasonable transform is the **square root**:
+
+```
+f(x) = w_1·x + w_2·√x + b
+```
+
+`√x` rises steeply at first, gets **less steep** as `x` grows, but **never flattens completely and never comes back down** — a different curve shape that may suit data where growth slows but keeps increasing. The point: you have a **wide range of feature choices**.
+
+| Transform | Curve behavior |
+|---|---|
+| `x²` (quadratic) | rises, then falls — careful with domains where that's unrealistic |
+| `x³` (cubic) | falls then rises (S-like) — keeps increasing for large `x` |
+| `√x` | rises, growth slows, never falls — monotonic, gently flattening |
+
+### How Do You Decide Which Features to Use?
+
+For now: just be aware you **have a choice**, and that feature engineering + polynomial terms can produce a much better model. A systematic way to *measure* which features/models perform best (so you can decide what to include) comes **later, in Course 2** of the specialization.
+
+### Aside — Scikit-learn
+
+The optional labs also introduce **scikit-learn**, a very widely used open-source ML library that implements linear regression in just a few lines.
+
+> Andrew's take: it's worth implementing linear regression **yourself** (as in this course) so you understand it, rather than treating a library call as a black box — but `scikit-learn` is how it's done in practice, so it's valuable to know both.
+
+### Takeaway
+
+| Idea | Detail |
+|---|---|
+| Polynomial regression | Fit curves by adding `x²`, `x³`, … as features |
+| Still linear regression under the hood | Linear in parameters → same gradient descent code |
+| Pick the curve shape thoughtfully | Quadratic dips back down; cubic and `√x` keep rising |
+| **Always scale** polynomial features | `x²`, `x³` ranges explode (1 → 1M → 1B) |
+| Feature choice is yours | Course 2 gives a process to compare models objectively |
+
+> **End of Week 2.** Next week goes beyond regression (predicting numbers) to the first **classification** algorithm — predicting categories.
