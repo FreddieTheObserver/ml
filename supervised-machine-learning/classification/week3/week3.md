@@ -397,6 +397,114 @@ The optional lab shows the **code implementation** of the decision boundary. The
 | Non-linear boundary | **Polynomial features** bend the boundary into circles, ellipses, and complex shapes (e.g. `x1² + x2² = 1`) |
 | Flexibility | Logistic regression can fit anything from a simple line to very complex regions, set by the features you supply |
 
+## Cost Function for Logistic Regression
+
+The **cost function** measures how well a particular choice of parameters `w, b` fits the training data — and thereby gives us a way to **choose better parameters**. Here we see *why the squared-error cost is a poor fit for logistic regression*, and define a new cost function that works.
+
+### The Training Set
+
+Each row is a training example — e.g. a patient's visit ending in a diagnosis.
+
+- `m` = number of training examples.
+- Each example has `n` features `x1 … xn` (tumor size, age, …).
+- Binary classification, so the target `y` is only ever **0 or 1**.
+- The model is the logistic regression model `f_w,b(x) = 1 / (1 + e^−(w·x + b))`.
+
+The question: given this training set, how do we choose `w` and `b`?
+
+### Why Squared Error Fails — Non-Convexity
+
+![Slide titled 'Squared error cost'. Top: the squared-error cost J(w,b) = (1/m) Σ_{i=1}^m [ ½ (f_w,b(x⁽ⁱ⁾) − y⁽ⁱ⁾)² ], with the ½ moved inside the summation (boxed). Bottom-left: 'linear regression', f_w,b(x) = w·x + b — a smooth bowl-shaped (convex) J(w,b) curve with blue gradient-descent arrows sliding down to the single global minimum. Bottom-right: 'logistic regression', f_w,b(x) = 1/(1+e^−(w·x+b)) — a wiggly 'non-convex' J(w,b) curve with many dips, and a gradient-descent step getting stuck in a shallow local minimum rather than reaching the global one.](images/squared-error-cost-nonconvex.jpg)
+
+For **linear regression**, the squared-error cost is:
+
+```
+J(w,b) = (1/m) Σ_{i=1}^{m}  ½ (f_w,b(x⁽ⁱ⁾) − y⁽ⁱ⁾)²
+```
+
+> Note the `½` is moved **inside** the summation here (vs Week 1's `1/2m` outside). It's purely cosmetic — it makes later math cleaner.
+
+With `f(x) = w·x + b`, this `J` is **convex** — a single bowl — so gradient descent slides straight to the **global minimum**.
+
+But plug in the logistic `f(x) = 1/(1+e^−(w·x+b))` and the same squared-error `J` becomes **non-convex** — a wiggly surface with **many local minima**. Gradient descent can get **stuck** in one of them and never reach the global minimum. So squared error is **not a good choice** for logistic regression.
+
+### Loss vs Cost
+
+We split the cost into a per-example **loss**. Inside the summation, call the term for a single example the **loss** `L`, a function of the prediction `f_w,b(x⁽ⁱ⁾)` and the true label `y⁽ⁱ⁾`:
+
+```
+J(w,b) = (1/m) Σ_{i=1}^{m}  L( f_w,b(x⁽ⁱ⁾), y⁽ⁱ⁾ )
+```
+
+- **Loss** `L` = how well you're doing on **one** example.
+- **Cost** `J` = the average loss over the **whole** training set.
+
+Choosing the right *form* for `L` is what restores convexity.
+
+### The Logistic Loss Function
+
+The loss used for logistic regression is defined piecewise on the label:
+
+```
+L( f_w,b(x⁽ⁱ⁾), y⁽ⁱ⁾ ) =  − log( f_w,b(x⁽ⁱ⁾) )        if y⁽ⁱ⁾ = 1
+                          − log( 1 − f_w,b(x⁽ⁱ⁾) )    if y⁽ⁱ⁾ = 0
+```
+
+#### Case `y = 1` — loss is `−log(f)`
+
+![Slide titled 'Logistic loss function', case y=1. Shows the piecewise loss definition. Left: a plot of L vs f_w,b(x) for y=1 over the valid range f ∈ (0,1) — the curve −log(f) starts very high (→∞) as f→0 and decreases to 0 at f=1, with marked points: f≈0.1 → high loss, f=0.5 → moderate loss, f→1 → loss≈0. Right: the full curves log(f) (purple, rising) and −log(f) (blue, falling) crossing the f-axis at f=1; a pink box highlights the relevant region 0<f<1. Annotations: 'As f→1 then loss→0' (good), 'As f→0 then loss→∞' (bad). Caption: 'Loss is lowest when f predicts close to the true label y.'](images/logistic-loss-y1.jpg)
+
+`f` is always in `(0, 1)`, so only that part of `−log(f)` matters. When the true label is `1`:
+
+| Prediction `f` | Loss `−log(f)` | Meaning |
+|---|---|---|
+| ≈ 1 | ≈ 0 | predicted ≈ 1, label is 1 → nearly right, tiny loss |
+| 0.5 | moderate | hedging → moderate penalty |
+| 0.1 | large | predicted 10% malignant but it *is* malignant → big penalty |
+
+So when `y = 1`, the loss **pushes the model to predict close to 1** (loss is lowest there).
+
+#### Case `y = 0` — loss is `−log(1 − f)`
+
+![Slide titled 'Logistic loss function', case y=0. Shows the piecewise loss with the y=0 branch highlighted. Left: a plot of L vs f_w,b(x) for y=0 over f ∈ (0,1) — the curve −log(1−f) is ≈0 at f=0 and rises steeply toward ∞ as f→1, with f=0 marked 'not malignant' (loss≈0) and f near 1 (e.g. 99.9%) marked with loss→∞. Right: the curve −log(1−f) shown rising to infinity as f approaches 1, with a pink box on the relevant 0<f<1 region. Annotations: 'As f→0 then loss→0' (good), 'As f→1 then loss→∞' (bad). Caption: 'The further the prediction f is from target y, the higher the loss.'](images/logistic-loss-y0.jpg)
+
+When the true label is `0`:
+
+| Prediction `f` | Loss `−log(1 − f)` | Meaning |
+|---|---|---|
+| ≈ 0 | ≈ 0 | predicted ≈ 0, label is 0 → nearly right, tiny loss |
+| larger | grows | further from 0 → bigger penalty |
+| → 1 | → ∞ | "99.9% malignant" but it's benign → enormous penalty |
+
+In both cases the rule is the same: **the further `f` is from the true `y`, the higher the loss.** This shape is what makes the overall cost convex.
+
+### The Cost Function — Convex Again
+
+![Slide titled 'Cost'. The cost J(w,b) = (1/m) Σ_{i=1}^m L(f_w,b(x⁽ⁱ⁾), y⁽ⁱ⁾), with the L(...) term under-braced as 'loss'. An arrow expands the loss into its piecewise definition: −log(f_w,b(x⁽ⁱ⁾)) if y=1, and −log(1−f_w,b(x⁽ⁱ⁾)) if y=0. Handwritten note: 'convex → can reach a global minimum'. Bottom: 'find w, b that minimize cost J'.](images/logistic-cost-function.jpg)
+
+Putting it together, the **cost** is the average logistic loss over all examples:
+
+```
+J(w,b) = (1/m) Σ_{i=1}^{m}  L( f_w,b(x⁽ⁱ⁾), y⁽ⁱ⁾ )
+```
+
+With this choice of loss, `J(w,b)` is **convex** — so gradient descent can reliably reach the **global minimum**. (Proving convexity is beyond the course's scope.) Training then means: **find the `w, b` that minimize `J`.**
+
+### Optional Lab (logistic loss)
+
+The optional lab contrasts the two cost surfaces: the **squared-error** surface for classification is **wiggly with many local minima**, while the **logistic-loss** surface is **smooth and convex** with a single global minimum. Run the code and compare the plots.
+
+### Takeaway
+
+| Idea | Detail |
+|---|---|
+| Squared error on logistic `f` | **Non-convex** — many local minima, gradient descent gets stuck |
+| Loss vs cost | **Loss** `L` = error on one example; **cost** `J` = average loss over all `m` examples |
+| Logistic loss (`y=1`) | `−log(f)`: → 0 as `f`→1, → ∞ as `f`→0 |
+| Logistic loss (`y=0`) | `−log(1−f)`: → 0 as `f`→0, → ∞ as `f`→1 |
+| General principle | The further `f` is from the true `y`, the higher the loss |
+| Result | The cost `J` is **convex** → gradient descent reaches the global minimum; train by minimizing `J` |
+
 ---
 
 *Prior weeks: [Week 1 — Introduction](../../introduction-to-machinelearning/week1/week1.md) · [Week 2 — Regression with Multiple Input Variables](../../regression-with-multiple-input-variables/week2/week2.md)*
