@@ -251,7 +251,151 @@ The optional lab after this lesson shows the **sigmoid function implemented in c
 
 ## Decision Boundary
 
-The **decision boundary** separates the region predicting `0` from the region predicting `1`. With logistic regression, we still pick a threshold (commonly `0.5`) to turn the probability output (`0.3`, `0.65`, `0.7`, …) into a hard `0/1` prediction. The next lesson visualizes this and defines the decision boundary precisely.
+The **decision boundary** separates the region where the model predicts `0` from the region where it predicts `1`. Looking at it gives a much better feel for *how logistic regression actually computes its predictions*.
+
+### Recap — From Probability to a 0/1 Prediction
+
+![Slide recapping how logistic regression turns its output into a hard prediction. Top-left: the sigmoid curve g(z) plotted against z (axis from roughly −3 to 3), with a dashed line at 1, the value 0.5 marked at z = 0, and handwritten notes showing g heads toward 0 as z→−∞ and toward 1 as z→+∞. Bottom-left: a black box stacking the two model steps — a blue box z = w·x + b, an arrow down labelled z, then a red box g(z) = 1/(1+e^−z). Right: f_w,b(x) = g(w·x + b) = 1/(1 + e^−(w·x+b)) = P(y=1 | x; w, b), with example outputs 0.7 and 0.3. Below, '0 or 1?' and 'threshold': Is f_w,b(x) ≥ 0.5? Yes → ŷ = 1, No → ŷ = 0. Then the chain 'When is f_w,b(x) ≥ 0.5? ⟺ g(z) ≥ 0.5 ⟺ z ≥ 0 ⟺ w·x + b ≥ 0 → ŷ = 1', alongside 'w·x + b < 0 → ŷ = 0'.](images/decision-boundary-threshold.jpg)
+
+The model still computes its output in **two steps**:
+
+```
+z      = w · x + b
+f(x)   = g(z) = 1 / (1 + e^−z) = 1 / (1 + e^−(w·x + b))
+```
+
+and we interpret `f(x)` as `P(y = 1 | x; w, b)` — a probability like `0.7` or `0.3`.
+
+To force a concrete **0 or 1** answer, pick a **threshold** (commonly `0.5`):
+
+```
+if f(x) ≥ 0.5   →   ŷ = 1
+if f(x) <  0.5   →   ŷ = 0
+```
+
+### When Does the Model Predict 1?
+
+Trace the threshold back through both steps. Predicting `1` requires `f(x) ≥ 0.5`, and since `f(x) = g(z)`:
+
+| Condition | ⟺ Equivalent to | Why |
+|---|---|---|
+| `f(x) ≥ 0.5` | `g(z) ≥ 0.5` | because `f(x) = g(z)` |
+| `g(z) ≥ 0.5` | `z ≥ 0` | the sigmoid crosses `0.5` exactly at `z = 0` (right half of the curve) |
+| `z ≥ 0` | `w · x + b ≥ 0` | because `z = w · x + b` |
+
+So the whole chain collapses to a simple rule:
+
+```
+w · x + b ≥ 0   →   predict ŷ = 1
+w · x + b <  0   →   predict ŷ = 0
+```
+
+> The messy sigmoid drops out entirely. Whether the model predicts 0 or 1 depends **only on the sign of `w · x + b`** — the same linear quantity from linear regression.
+
+### The Decision Boundary
+
+The interesting line to look at is where the model is **exactly neutral** — neither leaning toward `0` nor `1`:
+
+```
+w · x + b = 0      (equivalently z = 0)
+```
+
+This line is the **decision boundary**. On one side `w·x + b > 0` (predict 1); on the other `w·x + b < 0` (predict 0).
+
+### Linear Decision Boundary — A Two-Feature Example
+
+![Slide titled 'Decision boundary'. Model f_w,b(x) = g(z) = g(w1·x1 + w2·x2 + b) with parameters labelled w1 = 1, w2 = 1, b = −3. The decision boundary is derived: z = w·x + b = 0 → x1 + x2 − 3 = 0 → x1 + x2 = 3. Below, a 2-D plot with axes x1 (horizontal) and x2 (vertical), gridlines at 1, 2, 3. Blue circles (y = 0) cluster in the lower-left near the origin; red X's (y = 1) cluster in the upper-right. A straight purple line runs from (0,3) down to (3,0) — the boundary x1 + x2 = 3 — with the negative region (circled 'y = 0') to its lower-left and the positive region (circled 'y = 1') to its upper-right.](images/decision-boundary-linear.jpg)
+
+Move from one feature to **two features** `x1, x2`. Red crosses are positive examples (`y = 1`), blue circles are negative (`y = 0`). The model is:
+
+```
+z = w1·x1 + w2·x2 + b
+f(x) = g(z)
+```
+
+Take parameters `w1 = 1`, `w2 = 1`, `b = −3`. The decision boundary is where `z = 0`:
+
+```
+x1 + x2 − 3 = 0      →      x1 + x2 = 3
+```
+
+That's a straight line through `(3, 0)` and `(0, 3)`:
+
+```
+x2
+3 ●\           ×  ×
+  | \        ×  ×  ×
+2 ○  \     ×   ×            right of line:  x1 + x2 ≥ 3
+  | ○ ○\  ×                  →  w·x+b ≥ 0  →  predict 1
+1 ○ ○ ○ \ ×
+  | ○ ○ ○ \                 left of line:   x1 + x2 < 3
+0 +--------\----------► x1    →  w·x+b < 0  →  predict 0
+  0   1   2 3
+```
+
+- **Right of the line** → `w·x + b ≥ 0` → predict `ŷ = 1`.
+- **Left of the line** → `w·x + b < 0` → predict `ŷ = 0`.
+
+> A different choice of `w1, w2, b` just gives a **different straight line** — same idea, shifted/tilted.
+
+### Non-Linear Decision Boundaries — Polynomial Features
+
+![Slide titled 'Non-linear decision boundaries'. Model f_w,b(x) = g(z) = g(w1·x1² + w2·x2² + b) with w1 = 1, w2 = 1, b = −1. Decision boundary: z = x1² + x2² − 1 = 0 → x1² + x2² = 1. A 2-D plot with axes x1 and x2 and a purple circle of radius 1 centered at the origin. Blue circles (y = 0) sit inside the circle; red X's (y = 1) sit outside it. Annotations: 'x1² + x2² ≥ 1 → ŷ = 1' (outside the circle) and 'x1² + x2² < 1 → ŷ = 0' (inside the circle).](images/decision-boundary-nonlinear.jpg)
+
+Just as with linear regression, you can feed **polynomial features** into logistic regression. Set:
+
+```
+z = w1·x1² + w2·x2² + b
+```
+
+With `w1 = 1`, `w2 = 1`, `b = −1`, the boundary `z = 0` becomes:
+
+```
+x1² + x2² − 1 = 0      →      x1² + x2² = 1
+```
+
+which is a **circle** of radius 1 centred at the origin:
+
+```
+        x2
+         |    ×          outside the circle:
+      ×  | ○ ○    ×        x1² + x2² ≥ 1
+    ──○──○──○──○────► x1   →  predict ŷ = 1
+      ×  | ○ ○    ×
+         |    ×          inside the circle:
+              ×           x1² + x2² < 1
+                          →  predict ŷ = 0
+```
+
+- **Outside** the circle (`x1² + x2² ≥ 1`) → predict `1`.
+- **Inside** the circle (`x1² + x2² < 1`) → predict `0`.
+
+### Even More Complex Boundaries
+
+Adding **higher-order polynomial terms** lets the boundary take far more elaborate shapes. For example:
+
+```
+z = w1·x1 + w2·x2 + w3·x1² + w4·x1·x2 + w5·x2²
+```
+
+can carve out **ellipses** or other curves, and still more terms can produce boundaries that look like arbitrary wiggly closed shapes. The model predicts `1` inside the shape and `0` outside (or vice-versa, depending on the parameters).
+
+> **The key contrast:** if you use **only the raw features** `x1, x2, x3, …` (no higher-order terms), the decision boundary is **always linear** — a straight line (or flat plane). Curved boundaries come *entirely* from polynomial features. So logistic regression can fit anything from a simple line to very complex shapes, depending on the features you give it.
+
+### Optional Lab (decision boundary)
+
+The optional lab shows the **code implementation** of the decision boundary. The example uses **two features**, so the boundary appears as a **line** you can see plotted directly.
+
+### Takeaway
+
+| Idea | Detail |
+|---|---|
+| Prediction rule | Threshold the probability: `f(x) ≥ 0.5 → ŷ = 1`, else `ŷ = 0` |
+| Simplifies to a sign test | `f(x) ≥ 0.5 ⟺ g(z) ≥ 0.5 ⟺ z ≥ 0 ⟺ w·x + b ≥ 0`; the sigmoid drops out |
+| Decision boundary | The set where `w·x + b = 0` (z = 0) — the model is neutral there |
+| Linear boundary | With raw features only, the boundary is a **straight line / plane** (e.g. `x1 + x2 = 3`) |
+| Non-linear boundary | **Polynomial features** bend the boundary into circles, ellipses, and complex shapes (e.g. `x1² + x2² = 1`) |
+| Flexibility | Logistic regression can fit anything from a simple line to very complex regions, set by the features you supply |
 
 ---
 
