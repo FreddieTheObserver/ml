@@ -505,6 +505,217 @@ The optional lab contrasts the two cost surfaces: the **squared-error** surface 
 | General principle | The further `f` is from the true `y`, the higher the loss |
 | Result | The cost `J` is **convex** → gradient descent reaches the global minimum; train by minimizing `J` |
 
+## Simplified Cost Function for Logistic Regression
+
+Because this is **binary** classification, `y` is *always* `0` or `1` — never anything else. That single fact lets us collapse the two-case loss into **one line**, which makes the gradient-descent implementation simpler.
+
+### The Simplified Loss — One Equation
+
+Recall the piecewise loss from the previous section:
+
+```
+L( f_w,b(x⁽ⁱ⁾), y⁽ⁱ⁾ ) =  − log( f_w,b(x⁽ⁱ⁾) )        if y⁽ⁱ⁾ = 1
+                          − log( 1 − f_w,b(x⁽ⁱ⁾) )    if y⁽ⁱ⁾ = 0
+```
+
+Since `y` can only be `0` or `1`, the two cases can be written as a **single expression** (drop the `(i)` superscripts for readability):
+
+```
+L( f_w,b(x), y ) =  − y · log( f_w,b(x) )  −  (1 − y) · log( 1 − f_w,b(x) )
+```
+
+This one line is **completely equivalent** to the two-case version above.
+
+### Why It's Equivalent — Plug In Each Label
+
+The trick: one of the two terms always **switches off**, because `y` multiplies the first term and `(1 − y)` multiplies the second.
+
+| If `y =` | First term `−y·log(f)` | Second term `−(1−y)·log(1−f)` | Loss reduces to |
+|---|---|---|---|
+| **1** | `−1·log(f)` = `−log(f)` | `−(1−1)·log(1−f)` = `−0·… = 0` | **`−log(f)`** ✓ |
+| **0** | `−0·log(f)` = `0` | `−(1−0)·log(1−f)` = `−log(1−f)` | **`−log(1−f)`** ✓ |
+
+> When `y = 1`, the `(1 − y) = 0` factor kills the second term. When `y = 0`, the `y = 0` factor kills the first term. Either way, you get back exactly the matching case from the original piecewise definition — so the single line loses nothing.
+
+### The Simplified Cost Function
+
+The cost `J` is still just the **average loss** over all `m` examples:
+
+```
+J(w,b) = (1/m) Σ_{i=1}^{m}  L( f_w,b(x⁽ⁱ⁾), y⁽ⁱ⁾ )
+```
+
+Substitute the one-line loss and pull the two negative signs outside the sum:
+
+```
+J(w,b) = − (1/m) Σ_{i=1}^{m} [ y⁽ⁱ⁾ · log( f_w,b(x⁽ⁱ⁾) )  +  (1 − y⁽ⁱ⁾) · log( 1 − f_w,b(x⁽ⁱ⁾) ) ]
+```
+
+This is the cost function that **essentially everyone** uses to train logistic regression.
+
+### Why This Particular Cost?
+
+Of all the cost functions we could have invented, why this one?
+
+- It's derived from statistics using a principle called **maximum likelihood estimation (MLE)** — a standard way to efficiently find parameters for many models. (You don't need the details for this course.)
+- It has the nice property of being **convex**, so gradient descent can reliably reach the **global minimum**.
+
+### Optional Lab (logistic cost)
+
+An optional lab shows the logistic cost function **implemented in code**, and lets you see how **two different choices of parameters** produce different cost values — the better-fitting (blue) decision boundary has a **lower cost** than the worse (magenta) one. Worth a look, since you implement this in the practice lab at the end of the week.
+
+### Takeaway
+
+| Idea | Detail |
+|---|---|
+| Simplified loss | `L = − y·log(f) − (1−y)·log(1−f)` — one line, equivalent to the two-case form |
+| Why it works | `y` and `(1−y)` switch each term on/off, since `y` is only ever `0` or `1` |
+| Simplified cost | `J(w,b) = −(1/m) Σ [ y⁽ⁱ⁾ log(f⁽ⁱ⁾) + (1−y⁽ⁱ⁾) log(1−f⁽ⁱ⁾) ]` |
+| Where it comes from | **Maximum likelihood estimation**; the result is **convex** |
+
+## Gradient Descent for Logistic Regression
+
+To fit a logistic regression model we **find the `w, b` that minimize the cost `J(w,b)`** — and the tool, as before, is **gradient descent**. Once trained, feeding the model a new input `x` (e.g. a new patient's tumor size and age) yields `P(y = 1)`, an estimate of the probability the label is 1.
+
+### The Gradient Descent Algorithm
+
+Same template as linear regression — repeatedly nudge each parameter downhill by the learning rate `α` times the partial derivative:
+
+```
+repeat until convergence {
+    w_j = w_j − α · ∂J(w,b)/∂w_j        (for j = 1 … n)
+    b   = b   − α · ∂J(w,b)/∂b
+}
+```
+
+### The Derivatives
+
+Applying calculus to the logistic cost (derivation beyond scope) gives, for feature `j`:
+
+```
+∂J(w,b)/∂w_j = (1/m) Σ_{i=1}^{m} ( f_w,b(x⁽ⁱ⁾) − y⁽ⁱ⁾ ) · x_j⁽ⁱ⁾
+∂J(w,b)/∂b   = (1/m) Σ_{i=1}^{m} ( f_w,b(x⁽ⁱ⁾) − y⁽ⁱ⁾ )
+```
+
+where `x_j⁽ⁱ⁾` is the **`j`-th feature of training example `i`**. The two are identical except the `b` derivative drops the trailing `· x_j⁽ⁱ⁾`. The term `( f − y )` is the **error** — prediction minus true label.
+
+Plugging these in gives the full update rules (the `j` loop runs over all `n` features):
+
+```
+w_j = w_j − α · (1/m) Σ_{i=1}^{m} ( f_w,b(x⁽ⁱ⁾) − y⁽ⁱ⁾ ) · x_j⁽ⁱ⁾
+b   = b   − α · (1/m) Σ_{i=1}^{m} ( f_w,b(x⁽ⁱ⁾) − y⁽ⁱ⁾ )
+```
+
+### Simultaneous Update
+
+As with linear regression, **update all parameters simultaneously**: compute every right-hand side first (using the *old* values), then overwrite all the `w_j` and `b` at once.
+
+### "Wait — Isn't This Identical to Linear Regression?"
+
+The two algorithms look **letter-for-letter the same**. They are *not* the same algorithm — the difference is hidden inside the definition of `f`:
+
+| | `f_w,b(x)` is… |
+|---|---|
+| **Linear regression** | `f(x) = w · x + b` (a straight line) |
+| **Logistic regression** | `f(x) = 1 / (1 + e^−(w · x + b))` (the sigmoid) |
+
+> Same update *equation*, completely different *model*. Because `f` is the sigmoid here, this is a genuinely different algorithm despite the identical-looking math.
+
+### Same Practical Techniques Carry Over
+
+Everything you learned for linear-regression gradient descent applies here too:
+
+| Technique | How it applies to logistic regression |
+|---|---|
+| **Monitoring convergence** | Plot the learning curve and check `J` decreases each iteration — same method as before |
+| **Vectorization** | Vectorized implementation makes gradient descent run much faster (details in the optional labs) |
+| **Feature scaling** | Scaling features to similar ranges (e.g. `−1` to `+1`) speeds up convergence here just as it did for linear regression |
+
+### Optional Labs (gradient descent + scikit-learn)
+
+- **Gradient descent lab** — shows the logistic gradient computed in code, with **animated plots** as gradient descent runs: the sigmoid, the **contour plot** of the cost, the **3-D surface** of the cost, and the **learning curve** all evolving together. Useful prep for the end-of-week practice lab.
+- **Scikit-learn lab** — short but valuable: how to train a logistic regression model with the popular **scikit-learn** library (`LogisticRegression`). Many practitioners use scikit-learn daily, so it's worth seeing how it's called.
+
+### Takeaway
+
+| Idea | Detail |
+|---|---|
+| Goal | Find `w, b` minimizing the (convex) logistic cost `J(w,b)` via gradient descent |
+| `w_j` update | `w_j = w_j − α·(1/m) Σ ( f⁽ⁱ⁾ − y⁽ⁱ⁾ ) x_j⁽ⁱ⁾` |
+| `b` update | `b = b − α·(1/m) Σ ( f⁽ⁱ⁾ − y⁽ⁱ⁾ )` |
+| Looks like linear regression | …but it isn't — `f` is the **sigmoid**, not `w·x + b` |
+| Update style | **Simultaneous** update of all `w_j` and `b` |
+| Carries over | Convergence monitoring, **vectorization**, and **feature scaling** all work the same way |
+
+## The Problem of Overfitting
+
+Linear and logistic regression work well for many tasks, but they can run into **overfitting**, which makes them perform poorly. There's also an almost-opposite problem, **underfitting**. The goal of this section is to *recognize* both; the next sections cover how to fix overfitting (especially **regularization**).
+
+### Three Fits on the Housing Example (Regression)
+
+Predict house **price** `y` from **size** `x`. With the same 5 training points, three models behave very differently:
+
+```
+  UNDERFIT (high bias)        JUST RIGHT                 OVERFIT (high variance)
+  f = w·x + b                 f = w1·x + w2·x² + b        f = w1·x + … + w4·x⁴ + b
+  (straight line)             (quadratic)                 (4th-order polynomial)
+
+price                        price                       price
+ |        ___---             |        ___----            |     /\    /‾
+ |   __---     ●             |     _--‾  ● ●             |   ●/  \  /  ●
+ | ●/  ● ●                   |   ●/ ●                    | ●/    \●/
+ |/●                         |●/                         |/  ●
+ +----------- size           +----------- size           +----------- size
+ fits poorly                 fits well, generalizes      passes through ALL points,
+                                                          wiggly, generalizes badly
+```
+
+| Model | Fit | Diagnosis | Other name |
+|---|---|---|---|
+| **Straight line** | Misses the obvious curve (prices flatten as size grows) | **Underfitting** | **High bias** |
+| **Quadratic** (`x`, `x²`) | Fits training set well *and* would predict a new house well | **Just right** (good **generalization**) | — |
+| **4th-order polynomial** | Passes through all 5 points exactly (cost can be **0**), but wildly wiggly | **Overfitting** | **High variance** |
+
+### Key Vocabulary
+
+| Term | Meaning |
+|---|---|
+| **Underfitting / high bias** | Model is too simple to capture the clear pattern — it can't even fit the *training* set well. Like a strong **preconception** (e.g. "price *must* be linear in size") that overrides the data. |
+| **Generalization** | Making good predictions on **brand-new examples never seen in training** — the actual goal. |
+| **Overfitting / high variance** | Model fits the training data *too* well (even noise), so it fails to generalize. |
+| **Just right** | Neither underfit nor overfit — neither high bias nor high variance. |
+
+> **"Bias" has two meanings.** Checking algorithms for **bias against genders/ethnicities** is critical and real — but that's *not* the meaning here. In this context, **bias = underfitting**: the model has a strong preconception and can't fit the data.
+
+### Why "High Variance"?
+
+An overfit model is trying *so* hard to pass through every training point that the fit is **fragile**: change the training set even slightly (one house priced a bit differently) and the curve could come out **completely different**. Two engineers fitting the same high-order model to slightly different data would get highly **variable** predictions — hence *high variance*.
+
+> **Goldilocks intuition:** too cold (underfit), too hot (overfit), and one that's *just right* in the middle. The aim of machine learning is the "just right" model — **neither high bias nor high variance**.
+
+### Overfitting in Classification
+
+![Slide titled 'Classification'. Three panels of the same 2-D data — x1 (e.g. tumor size) horizontal, x2 (e.g. patient age) vertical — with red X's (malignant, y=1) and blue circles (benign, y=0), each panel showing a logistic regression decision boundary (where z = 0, g = sigmoid). Left: z = w1·x1 + w2·x2 + b gives a straight line that splits the classes only roughly — labelled 'underfit / high bias'. Middle: adding quadratic terms z = w1·x1 + w2·x2 + w3·x1² + w4·x2² + w5·x1·x2 + b gives a smooth ellipse-like boundary that fits well without classifying every point perfectly — labelled 'just right'. Right: a very high-order polynomial (many higher-order terms, +…+ b) produces a contorted, twisted boundary that wraps around individual points to classify the training set perfectly — labelled 'overfit'.](images/overfitting-classification.jpg)
+
+The same spectrum applies to logistic regression (here `x1` = tumor size, `x2` = patient age; `g` is the sigmoid, with the boundary at `z = 0`):
+
+| Features in `z` | Decision boundary | Diagnosis |
+|---|---|---|
+| `z = w1·x1 + w2·x2 + b` | **Straight line** — roughly separates, but a poor fit | **Underfit / high bias** |
+| add `x1²`, `x2²`, `x1·x2` | **Ellipse-like curve** — fits well, doesn't classify every point perfectly, generalizes | **Just right** |
+| many high-order polynomial terms | **Contorted, twisted boundary** wrapping individual points — perfect on training set | **Overfit / high variance** |
+
+### Takeaway
+
+| Idea | Detail |
+|---|---|
+| **Underfit = high bias** | Too few features / too simple → can't fit even the training data; strong preconception |
+| **Overfit = high variance** | Too many features / too complex → fits training data (even noise) almost perfectly, fails on new data, fragile to small data changes |
+| **Generalization** | The real goal: do well on **unseen** examples, not just the training set |
+| **Just right** | The middle ground — neither high bias nor high variance |
+| Applies to both | Same spectrum holds for **regression** (curve fit) and **classification** (decision boundary) |
+| What's next | Techniques to **address overfitting** — notably **regularization** |
+
 ---
 
 *Prior weeks: [Week 1 — Introduction](../../introduction-to-machinelearning/week1/week1.md) · [Week 2 — Regression with Multiple Input Variables](../../regression-with-multiple-input-variables/week2/week2.md)*
