@@ -716,6 +716,245 @@ The same spectrum applies to logistic regression (here `x1` = tumor size, `x2` =
 | Applies to both | Same spectrum holds for **regression** (curve fit) and **classification** (decision boundary) |
 | What's next | Techniques to **address overfitting** — notably **regularization** |
 
+## Addressing Overfitting
+
+Once you suspect a model is **overfitting** (high variance), there are **three** standard tools to fix it. (Later in the specialization there are formal diagnostics for *when* overfitting or underfitting is happening; this section is just the toolbox.)
+
+### Option 1 — Collect More Training Data
+
+The **number-one tool** against overfitting. With more training examples, the learning algorithm is forced to fit a **less wiggly** function: you can keep a high-order polynomial (or lots of features) and it will *still* do okay, because there's simply more data constraining the curve.
+
+```
+   OVERFIT (little data)              MORE DATA → SMOOTHER FIT
+   price                              price
+    |   /\    /‾  ●                    |        __--‾‾●  ●
+    | ●/  \  /                         |   ●__-‾ ● ●
+    |/  \●/   ●                        | ●-‾ ● ●
+    +----------- size                  +----------------- size
+    wiggly, generalizes badly          fits the trend, generalizes well
+```
+
+> **Caveat:** more data **isn't always available** — maybe only so many houses have sold in this location, so there just isn't more to be had. When you *can* get more, this works really well; when you can't, use the other two options.
+
+### Option 2 — Use Fewer Features (Feature Selection)
+
+If you have **many features** but **not enough data**, the algorithm can overfit. Two flavors of the fix:
+
+- **Too many polynomial features** (`x, x², x³, x⁴, …`) — just don't use so many of them.
+- **Too many distinct features** (size, #bedrooms, #floors, age, neighborhood income, …, distance to the nearest coffee shop — say 100 of them) — pick a **subset of the most useful** ones (e.g. size, bedrooms, age).
+
+Choosing which features to keep is called **feature selection**. The simplest approach is to use your **intuition / domain knowledge** to pick the most relevant features for the prediction.
+
+> **Disadvantage:** using only a subset **throws away information**. If all 100 features are actually useful, you may not want to discard any of them. (Course 2 covers algorithms that choose the most appropriate features **automatically**.)
+
+### Option 3 — Regularization
+
+The most useful and most widely used of the three.
+
+- Eliminating a feature is the same as forcing its parameter to **0** (e.g. dropping `x⁴` ⟺ setting `w4 = 0`). That's harsh — an all-or-nothing decision.
+- **Regularization** is a gentler version: it **encourages** parameters to be **small** without demanding they be exactly `0`.
+- You **keep all your features**, but prevent any one of them from having an **overly large effect** — which is what often causes overfitting.
+
+> Even if you fit a high-order polynomial, as long as the algorithm uses **small** parameter values `w1, w2, …, wn`, you end up with a smoother curve that fits the data much better.
+
+**Convention:** regularize only `w1 … wn`, **not `b`.** In practice it makes very little difference whether you also shrink `b`, so the course leaves it out.
+
+### Optional Lab (overfitting)
+
+An interactive plot lets you **see** overfitting for both **regression and classification**: change the **polynomial degree** (`x, x², x³, …`), **add your own data points** by clicking the plot, **add training data** to reduce overfitting, and **include or exclude features**. Good for building intuition about overfitting and its fixes.
+
+### Takeaway
+
+| Option | What it does | Caveat |
+|---|---|---|
+| 1. More training data | Forces a smoother, less-wiggly fit; you can keep a complex model | Data isn't always available |
+| 2. Fewer features (feature selection) | A smaller subset of features → less to overfit with | Discards potentially useful information |
+| 3. Regularization | Gently **shrinks** the parameters `wj`, keeping all features | Usually leave `b` out (convention) |
+
+## Cost Function with Regularization
+
+Regularization works by **modifying the cost function** to penalize large parameters. Minimizing the new cost then *automatically* keeps the parameters small.
+
+### Intuition — Penalize Two Parameters
+
+Take the earlier quadratic-vs-quartic example: a quadratic fits the housing data well, but a high-order polynomial overfits. Suppose we modify the linear-regression cost by adding a **big penalty** on `w3` and `w4`:
+
+```
+min   (1/2m) Σ_{i=1}^{m} (f(x⁽ⁱ⁾) − y⁽ⁱ⁾)²   +   1000·w3²   +   1000·w4²
+```
+
+The `1000` is just "some big number." To make this cost small, the only option is to drive `w3 ≈ 0` and `w4 ≈ 0` — effectively **canceling out** the `x³` and `x⁴` terms. The fit collapses back toward the well-behaved **quadratic** (with maybe tiny contributions from the higher terms), which is a much better fit.
+
+> **General idea:** smaller parameter values ⟺ a **simpler model** (a bit like having fewer features) ⟺ **less prone to overfitting**.
+
+### Regularizing All Parameters
+
+With, say, 100 features you usually **don't know in advance** which ones to penalize. So the standard approach is to **penalize all the `wj` a little**, by adding one new term to the cost:
+
+```
+J(w,b) = (1/2m) Σ_{i=1}^{m} (f(x⁽ⁱ⁾) − y⁽ⁱ⁾)²   +   (λ/2m) Σ_{j=1}^{n} wj²
+         └────────── mean squared error ──────────┘   └─ regularization term ─┘
+```
+
+- `λ` (Greek **lambda**) `≥ 0` is the **regularization parameter** — a number *you* choose, just like the learning rate `α`.
+- The sum runs over all `n` features, so **every `wj` gets shrunk** a bit. This usually yields a **smoother, simpler** function that's less prone to overfitting.
+
+#### Two Conventions
+
+- **Divide by `2m`** — the same `1/2m` scaling as the first term. Scaling both terms the same way makes it easier to pick a good `λ`: a value that works keeps working even as the training-set size `m` **grows**.
+- **Don't penalize `b`.** Some implementations add `(λ/2m)·b²`, but it makes essentially no difference; the more common convention (used in the course) regularizes only `w`.
+
+### Trading Off Two Goals
+
+The new cost has two terms pulling in different directions:
+
+| Term | Encourages |
+|---|---|
+| Mean squared error `(1/2m) Σ (f−y)²` | **Fit the training data** well |
+| Regularization `(λ/2m) Σ wj²` | Keep the parameters `wj` **small** → reduce overfitting |
+
+`λ` specifies the **relative importance** of — i.e. the **balance** between — these two goals.
+
+### What λ Controls — The Two Extremes
+
+Housing-price example with linear regression:
+
+| `λ` | Effect of the regularization term | Result |
+|---|---|---|
+| `λ = 0` | Term vanishes — no regularization at all | **Overfit** — wiggly, overly complex curve |
+| `λ` enormous (e.g. `10¹⁰`) | Dominates everything → all `wj ≈ 0` | **Underfit** — `f(x) ≈ b`, a horizontal straight line |
+| in between | Balanced | **Just right** — fits a 4th-order polynomial, but smoothly |
+
+> Too small ⟶ overfit; too large ⟶ underfit. You want a `λ` that **balances** "fit the data" against "keep parameters small." (How to actually *choose* good values — **model selection** — comes later in the specialization.)
+
+### Takeaway
+
+| Idea | Detail |
+|---|---|
+| Regularized cost | `J = (1/2m) Σ (f−y)² + (λ/2m) Σ wj²` |
+| `λ` = regularization parameter | Sets the tradeoff; you pick it, like `α` |
+| Scaling by `2m` | Keeps a good `λ` working as `m` grows |
+| `b` not regularized | By convention; negligible difference in practice |
+| `λ = 0` | **Overfit** (regularization off) |
+| `λ` enormous | **Underfit** (`f ≈ b`, flat line) |
+
+## Regularized Linear Regression
+
+Now get **gradient descent** to minimize the *regularized* cost.
+
+### The Cost and the Updates
+
+```
+J(w,b) = (1/2m) Σ_{i=1}^{m} (f(x⁽ⁱ⁾) − y⁽ⁱ⁾)²   +   (λ/2m) Σ_{j=1}^{n} wj²
+```
+
+The gradient-descent **template is unchanged** — only the derivative of `J` with respect to `wj` picks up **one extra term**:
+
+```
+∂J/∂wj = (1/m) Σ_{i=1}^{m} (f(x⁽ⁱ⁾) − y⁽ⁱ⁾)·x_j⁽ⁱ⁾   +   (λ/m)·wj
+∂J/∂b  = (1/m) Σ_{i=1}^{m} (f(x⁽ⁱ⁾) − y⁽ⁱ⁾)
+```
+
+- The **`+ (λ/m)·wj`** is the only new piece (it comes from differentiating the regularization term).
+- The **`b` derivative is unchanged** — we don't regularize `b`, so we're not trying to shrink it.
+
+Full update rules (`j = 1 … n`, **simultaneous** update):
+
+```
+wj = wj − α [ (1/m) Σ (f(x⁽ⁱ⁾) − y⁽ⁱ⁾) x_j⁽ⁱ⁾   +   (λ/m) wj ]
+b  = b  − α [ (1/m) Σ (f(x⁽ⁱ⁾) − y⁽ⁱ⁾) ]
+```
+
+> Everything below is **optional** intuition / derivation — not needed for the labs or quizzes.
+
+### (Optional) Why It Shrinks `wj` on Every Step
+
+Rearrange the `wj` update by pulling the `(λ/m)wj` term to the front:
+
+```
+wj = wj·(1 − α·λ/m)   −   α·(1/m) Σ (f(x⁽ⁱ⁾) − y⁽ⁱ⁾) x_j⁽ⁱ⁾
+     └── shrink ──┘        └──── the usual (unregularized) update ────┘
+```
+
+The second part is exactly the **ordinary** gradient-descent update from Week 2. The new part multiplies `wj` by `(1 − α·λ/m)` — a number **slightly less than 1**.
+
+Plug in typical values `α = 0.01`, `λ = 1`, `m = 50`:
+
+```
+α·λ/m = 0.01 · 1 / 50 = 0.0002      →      1 − 0.0002 = 0.9998
+```
+
+So every iteration first does `wj ← 0.9998·wj` — a tiny **shrink toward 0** — *then* applies the usual update. That's another view of why regularization shrinks the parameters a little on each step.
+
+### (Optional) Where the Derivative Comes From
+
+With `f(x) = w·x + b`, the rules of calculus give:
+
+```
+∂J/∂wj = (1/2m) Σ (w·x⁽ⁱ⁾ + b − y⁽ⁱ⁾)·2x_j⁽ⁱ⁾   +   (λ/2m)·2wj
+```
+
+The `2`s cancel the `½` (in both terms), and `w·x + b = f(x)`, leaving:
+
+```
+∂J/∂wj = (1/m) Σ (f(x⁽ⁱ⁾) − y⁽ⁱ⁾)·x_j⁽ⁱ⁾   +   (λ/m)·wj
+```
+
+> Notice the regularization piece has **no summation over `i`** — it's just `(λ/m)wj`.
+
+### Takeaway
+
+| Idea | Detail |
+|---|---|
+| Regularized cost | `J = (1/2m) Σ (f−y)² + (λ/2m) Σ wj²` |
+| `wj` derivative | usual term **`+ (λ/m)·wj`** |
+| `b` derivative | **unchanged** — `b` is not regularized |
+| `wj` update | `wj = wj(1 − α·λ/m) − α·(1/m) Σ (f−y) x_j` |
+| Shrink view | each step multiplies `wj` by a number just under 1 (e.g. `0.9998`) |
+| Payoff | Big reduction in overfitting when you have **many features and little data** |
+
+## Regularized Logistic Regression
+
+Logistic regression also overfits when fit with lots of features (e.g. high-order polynomials) — the decision boundary becomes **overly complex**. Regularization fixes it exactly as it did for linear regression.
+
+### Regularized Cost
+
+Take the logistic cost and add the **same** regularization term:
+
+```
+J(w,b) = −(1/m) Σ_{i=1}^{m} [ y⁽ⁱ⁾ log(f(x⁽ⁱ⁾)) + (1−y⁽ⁱ⁾) log(1−f(x⁽ⁱ⁾)) ]   +   (λ/2m) Σ_{j=1}^{n} wj²
+```
+
+The new term penalizes large `w1 … wn`, so even when you fit a high-order polynomial with many parameters, you get a **reasonable, smoother decision boundary** that generalizes better to new examples.
+
+### Gradient Descent
+
+Same template, and — just like regularized linear regression — only the `wj` derivative gains the `+ (λ/m)·wj` term:
+
+```
+wj = wj − α [ (1/m) Σ (f(x⁽ⁱ⁾) − y⁽ⁱ⁾) x_j⁽ⁱ⁾   +   (λ/m) wj ]
+b  = b  − α [ (1/m) Σ (f(x⁽ⁱ⁾) − y⁽ⁱ⁾) ]
+```
+
+- `b` is **not** regularized → its update is unchanged.
+- These equations look **identical** to regularized linear regression — the **only** difference is the definition of `f`: here `f(x) = 1/(1 + e^−(w·x + b))` (the **sigmoid**), not `w·x + b`.
+
+### Optional Lab (regularization)
+
+The final optional lab revisits overfitting with an interactive plot where you can now **enable regularization** for both regression and classification by choosing a value for `λ`, and watch the fit / decision boundary become more reasonable. Study the regularized-logistic-regression code — you implement it yourself in the **end-of-week practice lab**.
+
+### Takeaway
+
+| Idea | Detail |
+|---|---|
+| Regularized cost | logistic cost `+ (λ/2m) Σ wj²` |
+| `wj` update | logistic update **`+ (λ/m)·wj`** term |
+| `b` update | unchanged (not regularized) |
+| vs linear regression | **same equations** — only `f` differs (sigmoid vs straight line) |
+| Payoff | Tames complex decision boundaries; better generalization |
+
+> **End of Course 1.** With just linear and logistic regression — plus knowing **when and how to reduce overfitting** — you can already build genuinely valuable applications. Next up (Course 2): **neural networks / deep learning**, built from the very pieces you've already learned — cost functions, gradient descent, and the sigmoid function.
+
 ---
 
 *Prior weeks: [Week 1 — Introduction](../../introduction-to-machinelearning/week1/week1.md) · [Week 2 — Regression with Multiple Input Variables](../../regression-with-multiple-input-variables/week2/week2.md)*
